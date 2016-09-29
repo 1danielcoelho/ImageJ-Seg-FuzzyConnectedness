@@ -1,28 +1,50 @@
 import java.awt.Button;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Panel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.SwingConstants;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.GUI;
+import ij.gui.ImageCanvas;
 import ij.gui.Roi;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener
+public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener
 {
 	private Panel panel;
 	private int previousID;
 	private static Frame instance;
+	private ImageCanvas canvas;
 	
 	class Runner extends Thread 
 	{ 
@@ -151,47 +173,179 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 			return;
 		}		
 		instance = this;
-		addKeyListener(IJ.getInstance());
+		addKeyListener(IJ.getInstance());		
+		
+		ImagePlus imp = WindowManager.getCurrentImage();
+		if(imp != null)
+		{
+			canvas = imp.getCanvas();
+			canvas.addMouseListener(this);	
+		}		
+		
+		//Uncomment to use system look and feel
+//		try {
+//			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+//		} catch (ClassNotFoundException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (InstantiationException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (IllegalAccessException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (UnsupportedLookAndFeelException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		
 		setLayout(new FlowLayout());
+		
+		//Create the GUI panel and add all the controls
 		panel = new Panel();
-		panel.setLayout(new GridLayout(4, 4, 5, 5));
-		addButton("Reset");
-		addButton("Flip");
-		addButton("Invert");
-		addButton("Rotate");
-		addButton("Lighten");
-		addButton("Darken");
-		addButton("Zoom In");
-		addButton("Zoom Out");
-		addButton("Smooth");
-		addButton("Sharpen");
-		addButton("Find Edges");
-		addButton("Threshold");
-		addButton("Add Noise");
-		addButton("Reduce Noise");
-		addButton("Macro1");
-		addButton("Macro2");
-		add(panel);
+		panel.setLayout(new GridBagLayout());
+		GridBagConstraints c = new GridBagConstraints();
+				
+		JLabel thresholdLabel = new JLabel("Object threshold");
+		c.gridx = 0;
+		c.gridy = 0;	
+		c.fill = c.NONE;
+		panel.add(thresholdLabel, c);		
+		
+		final JSlider objThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
+		objThresholdSlider.setMajorTickSpacing(10);
+		objThresholdSlider.setPaintTicks(true);
+		c.gridx = 1;
+		c.gridy = 0;
+		panel.add(objThresholdSlider, c);	
+		
+		final JTextField objThresholdField = new JTextField(5);
+		objThresholdField.setText("0.5");
+		c.gridx = 2;
+		c.gridy = 0;
+		panel.add(objThresholdField, c);
+		
+		JLabel seedsLabel = new JLabel("Seeds");
+		c.gridx = 0;
+		c.gridy = 1;
+		panel.add(seedsLabel, c);		
+		
+		JToggleButton seedsButton = new JToggleButton("Select seeds");
+		seedsButton.addActionListener(this);
+		seedsButton.addKeyListener(IJ.getInstance());
+		c.gridx = 1;		
+		c.gridy = 1;
+		c.gridwidth = 2;
+		panel.add(seedsButton, c);
+		
+		JLabel outputFuzzyLabel = new JLabel("Output fuzzy image");
+		c.gridx = 0;
+		c.gridy = 2;
+		c.gridwidth = 1;
+		panel.add(outputFuzzyLabel, c);
+		
+		JCheckBox outputFuzzyCheckbox = new JCheckBox();
+		c.gridx = 1;
+		c.gridy = 2;
+		c.gridwidth = 2;
+		panel.add(outputFuzzyCheckbox, c);
+				
+		JLabel outputBinaryLabel = new JLabel("Output binary image");
+		c.gridx = 0;
+		c.gridy = 3;
+		c.gridwidth = 1;
+		panel.add(outputBinaryLabel, c);		
+		
+		JCheckBox outputBinaryCheckbox = new JCheckBox();
+		c.gridx = 1;
+		c.gridy = 3;		 
+		c.gridwidth = 2;
+		panel.add(outputBinaryCheckbox, c);		
+		
+		JLabel binaryThresholdLabel = new JLabel("Binarization threshold");	
+		c.gridx = 0;
+		c.gridy = 4;
+		c.gridwidth = 1;
+		panel.add(binaryThresholdLabel, c);				
+		
+		JSlider binaryThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
+		binaryThresholdSlider.setMajorTickSpacing(10);
+		binaryThresholdSlider.setPaintTicks(true);
+		c.gridx = 1;
+		c.gridy = 4;
+		panel.add(binaryThresholdSlider, c);
+		
+		JTextField binaryThresholdField = new JTextField(5);
+		binaryThresholdField.setText("0.5");
+		c.gridx = 2;
+		c.gridy = 4;
+		panel.add(binaryThresholdField, c);
+				
+		//Create a bottom panel for the main execution controls
+		Panel bottomPanel = new Panel();
+		bottomPanel.setLayout(new FlowLayout());
+		
+		JButton runButton = new JButton("Run");
+		bottomPanel.add(runButton, c);		
+		
+		JButton clearButton = new JButton("Clear");
+		bottomPanel.add(clearButton, c);	
+		
+		JButton resetButton = new JButton("Reset parameters");
+		bottomPanel.add(resetButton, c);			
+		
+		//Color the bottom panel differently do highlight it
+		panel.setBackground(binaryThresholdSlider.getBackground());
+		bottomPanel.setBackground(Color.white);
+		
+		//Add bottom panel at the bottom of the main parameter panel
+		c.gridwidth = 3;
+		c.gridheight = 1;
+		c.gridx = 0;
+		c.gridy = 5;
+		c.fill = c.BOTH;
+		panel.add(bottomPanel, c);
+		
+		//Add the main parameter panel to our window
+		add(panel);		
 		
 		pack();
 		GUI.center(this);
 		setVisible(true);
-	}
-
-
-	void addButton(String label) {
-		Button b = new Button(label);
-		b.addActionListener(this);
-		b.addKeyListener(IJ.getInstance());
-		panel.add(b);
+				
+		//Connect the slider and text fields so when one updates, so does the other
+		bindSliderAndTextField(objThresholdSlider, objThresholdField);
+		bindSliderAndTextField(binaryThresholdSlider, binaryThresholdField);
 	}
     
-	public int setup(String arg, ImagePlus image) 
+    /**
+     * Connects a [0, 100] slider to a text field so that when one updates the other
+     * follows. The displayed value will also be divided by 100, so that it seems we're
+     * manipulating a [0, 1] number
+     * @param slider A JSlider with min set to 0 and max set to 100
+     * @param text A JTextField
+     */
+    public void bindSliderAndTextField(final JSlider slider, final JTextField text)
     {
-		IJ.showMessage("setup called");
-		return 0;
-    }    
+    	slider.addChangeListener(new ChangeListener(){
+            @Override
+            public void stateChanged(ChangeEvent e) {
+            	text.setText(String.valueOf((slider.getValue()) / 100.0));
+            }
+        });
+    	text.addKeyListener(new KeyAdapter(){
+            @Override
+            public void keyReleased(KeyEvent ke) {
+            	String typed = text.getText();
+            	slider.setValue(0);
+                if(!typed.matches("\\d+(\\.\\d*)?")) {
+                    return;
+                }
+                double value = Double.parseDouble(typed);
+                slider.setValue((int)(value * 100.0));
+            }
+        });
+    }
     
 	public void run(String arg) 
 	{
@@ -225,7 +379,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 		if (label==null)
 			return;
 		
-		new Runner(label, imp);
+		//new Runner(label, imp);
 	}
     
 	public void processWindowEvent(WindowEvent e) 
@@ -252,5 +406,47 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");		
+	}
+
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void mousePressed(MouseEvent e) 
+	{
+		int x = e.getX();
+		int y = e.getY();
+		int offscreenX = canvas.offScreenX(x);
+		int offscreenY = canvas.offScreenY(y);
+		
+		IJ.showMessage(Integer.toString(offscreenX) + ", " + Integer.toString(offscreenY));
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
 	}
 }
