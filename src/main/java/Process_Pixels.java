@@ -40,12 +40,15 @@ import ij.gui.Toolbar;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener
+public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener
 {
 	private Panel panel;
 	private int previousID;
 	private static Frame instance;
 	private ImageCanvas canvas;
+	
+	private ArrayList<Point> _seeds = new ArrayList<Point>();	
+	private boolean _pickingSeeds = false;
 	
 	class Runner extends Thread 
 	{ 
@@ -179,8 +182,9 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 		final ImagePlus imp = WindowManager.getCurrentImage();
 		if(imp != null)
 		{
-			canvas = imp.getCanvas();	
-		}		
+			canvas = imp.getCanvas();
+			canvas.addMouseListener(this);	
+		}	
 		
 		setLayout(new FlowLayout());
 		
@@ -218,7 +222,9 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 		{ 
 			public void actionPerformed(ActionEvent e) 
 			{ 				
-				IJ.setTool(Toolbar.POINT);				
+				_pickingSeeds = seedsButton.isSelected();		
+				if(_pickingSeeds)
+					IJ.setTool(Toolbar.POINT);				
 			} 	
 		});
 		seedsButton.addKeyListener(IJ.getInstance());
@@ -233,6 +239,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 			public void actionPerformed(ActionEvent e) 
 			{ 				
 				imp.deleteRoi();
+				_seeds.clear();	
 			} 	
 		});
 		seedsResetButton.addKeyListener(IJ.getInstance());
@@ -289,20 +296,6 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 		bottomPanel.setLayout(new FlowLayout());
 		
 		JButton runButton = new JButton("Run");
-		runButton.addActionListener(new ActionListener() 
-		{ 
-			public void actionPerformed(ActionEvent e) 
-			{ 				
-				Roi roi = imp.getRoi();
-				
-				if(roi != null && roi instanceof PointRoi)
-				{
-					Polygon poly = roi.getPolygon();
-					
-					IJ.showStatus(Integer.toString(poly.npoints));
-				}				
-			} 	
-		});
 		bottomPanel.add(runButton, c);		
 		
 		JButton clearButton = new JButton("Clear");
@@ -424,4 +417,27 @@ public class Process_Pixels extends PlugInFrame implements ActionListener
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");		
 	}
+
+	public void mousePressed(MouseEvent e) 
+	{
+		if(_pickingSeeds)
+		{						
+			ImagePlus imp = WindowManager.getCurrentImage();
+			Roi roi = imp.getRoi();
+			
+			if(roi != null && roi instanceof PointRoi)
+			{
+				PointRoi ptRoy = (PointRoi)roi;
+				int num = ptRoy.getNCoordinates();
+				
+				Polygon poly = ptRoy.getPolygon();
+				IJ.showStatus(Integer.toString(num) + ", " + poly.toString());
+			}					
+		}		
+	}
+
+	public void mouseClicked(MouseEvent e) {}
+	public void mouseReleased(MouseEvent e) {}
+	public void mouseEntered(MouseEvent e) {}
+	public void mouseExited(MouseEvent e) {}
 }
