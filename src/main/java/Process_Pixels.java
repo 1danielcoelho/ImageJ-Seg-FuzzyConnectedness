@@ -1,12 +1,11 @@
-import java.awt.Button;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.Panel;
+import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -16,6 +15,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -24,8 +24,6 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -35,11 +33,14 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.GUI;
 import ij.gui.ImageCanvas;
+import ij.gui.Overlay;
+import ij.gui.PointRoi;
 import ij.gui.Roi;
+import ij.gui.Toolbar;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener
+public class Process_Pixels extends PlugInFrame implements ActionListener
 {
 	private Panel panel;
 	private int previousID;
@@ -175,29 +176,11 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		instance = this;
 		addKeyListener(IJ.getInstance());		
 		
-		ImagePlus imp = WindowManager.getCurrentImage();
+		final ImagePlus imp = WindowManager.getCurrentImage();
 		if(imp != null)
 		{
-			canvas = imp.getCanvas();
-			canvas.addMouseListener(this);	
+			canvas = imp.getCanvas();	
 		}		
-		
-		//Uncomment to use system look and feel
-//		try {
-//			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//		} catch (ClassNotFoundException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (InstantiationException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (IllegalAccessException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (UnsupportedLookAndFeelException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
 		
 		setLayout(new FlowLayout());
 		
@@ -230,13 +213,33 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		c.gridy = 1;
 		panel.add(seedsLabel, c);		
 		
-		JToggleButton seedsButton = new JToggleButton("Select seeds");
-		seedsButton.addActionListener(this);
+		final JToggleButton seedsButton = new JToggleButton("Select seeds");
+		seedsButton.addActionListener(new ActionListener() 
+		{ 
+			public void actionPerformed(ActionEvent e) 
+			{ 				
+				IJ.setTool(Toolbar.POINT);				
+			} 	
+		});
 		seedsButton.addKeyListener(IJ.getInstance());
 		c.gridx = 1;		
 		c.gridy = 1;
-		c.gridwidth = 2;
+		c.gridwidth = 1;
 		panel.add(seedsButton, c);
+		
+		JButton seedsResetButton = new JButton("Reset seeds");
+		seedsResetButton.addActionListener(new ActionListener() 
+		{ 
+			public void actionPerformed(ActionEvent e) 
+			{ 				
+				imp.deleteRoi();
+			} 	
+		});
+		seedsResetButton.addKeyListener(IJ.getInstance());
+		c.gridx = 2;		
+		c.gridy = 1;
+		c.gridwidth = 1;
+		panel.add(seedsResetButton, c);
 		
 		JLabel outputFuzzyLabel = new JLabel("Output fuzzy image");
 		c.gridx = 0;
@@ -286,6 +289,20 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		bottomPanel.setLayout(new FlowLayout());
 		
 		JButton runButton = new JButton("Run");
+		runButton.addActionListener(new ActionListener() 
+		{ 
+			public void actionPerformed(ActionEvent e) 
+			{ 				
+				Roi roi = imp.getRoi();
+				
+				if(roi != null && roi instanceof PointRoi)
+				{
+					Polygon poly = roi.getPolygon();
+					
+					IJ.showStatus(Integer.toString(poly.npoints));
+				}				
+			} 	
+		});
 		bottomPanel.add(runButton, c);		
 		
 		JButton clearButton = new JButton("Clear");
@@ -406,47 +423,5 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");		
-	}
-
-
-	@Override
-	public void mouseClicked(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-
-	@Override
-	public void mousePressed(MouseEvent e) 
-	{
-		int x = e.getX();
-		int y = e.getY();
-		int offscreenX = canvas.offScreenX(x);
-		int offscreenY = canvas.offScreenY(y);
-		
-		IJ.showMessage(Integer.toString(offscreenX) + ", " + Integer.toString(offscreenY));
-		// TODO Auto-generated method stub
-		
-	}
-
-
-	@Override
-	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-
-	@Override
-	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-
-	@Override
-	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
 	}
 }
