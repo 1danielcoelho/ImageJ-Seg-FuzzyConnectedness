@@ -4,10 +4,10 @@ import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Panel;
-import java.awt.Point;
-import java.awt.Polygon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -16,6 +16,7 @@ import java.awt.event.WindowEvent;
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -33,22 +34,23 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.GUI;
 import ij.gui.ImageCanvas;
-import ij.gui.Overlay;
-import ij.gui.PointRoi;
 import ij.gui.Roi;
-import ij.gui.Toolbar;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener
+public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener, FocusListener
 {
 	private Panel panel;
 	private int previousID;
 	private static Frame instance;
-	private ImageCanvas canvas;
-	
-	private ArrayList<Point> _seeds = new ArrayList<Point>();	
 	private boolean _pickingSeeds = false;
+	
+	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();
+	
+	//ImageStack.createEmptyStack()
+	
+	private ImagePlus _currentImage;	
+	private SegmentStack _currentSegment;
 	
 	class Runner extends Thread 
 	{ 
@@ -169,6 +171,34 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		}	
 	}
 	
+	class Point3D
+	{
+		@Override
+		public String toString() {
+			return "Point3D [x=" + x + ", y=" + y + ", z=" + z + "]";
+		}
+
+		int x;
+		int y;
+		int z;
+		
+		Point3D(int x, int y, int z)
+		{
+			this.x = x; this.y = y; this.z = z;
+		}
+	}
+	
+	class SegmentStack
+	{
+		private String _refImageTitle;
+		private ArrayList<Point3D> _seeds = new ArrayList<Point3D>();
+		
+		int width;
+		int height;
+		int depth;
+		int[] _stack;
+	}
+	
     public Process_Pixels() 
     {
 		super("Process pixels");
@@ -177,16 +207,45 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			return;
 		}		
 		instance = this;
-		addKeyListener(IJ.getInstance());		
+		addKeyListener(IJ.getInstance());	
 		
-		final ImagePlus imp = WindowManager.getCurrentImage();
-		if(imp != null)
-		{
-			canvas = imp.getCanvas();
-			canvas.addMouseListener(this);	
-		}	
+		updateCurrentImageReference();
 		
-		setLayout(new FlowLayout());
+		createGUI();
+	}
+    
+    /**
+     * Connects a [0, 100] slider to a text field so that when one updates the other
+     * follows. The displayed value will also be divided by 100, so that it seems we're
+     * manipulating a [0, 1] number
+     * @param slider A JSlider with min set to 0 and max set to 100
+     * @param text A JTextField
+     */
+    public void bindSliderAndTextField(final JSlider slider, final JTextField text)
+    {
+    	slider.addChangeListener(new ChangeListener(){
+            @Override
+            public void stateChanged(ChangeEvent e) {
+            	text.setText(String.valueOf((slider.getValue()) / 100.0));
+            }
+        });
+    	text.addKeyListener(new KeyAdapter(){
+            @Override
+            public void keyReleased(KeyEvent ke) {
+            	String typed = text.getText();
+            	slider.setValue(0);
+                if(!typed.matches("\\d+(\\.\\d*)?")) {
+                    return;
+                }
+                double value = Double.parseDouble(typed);
+                slider.setValue((int)(value * 100.0));
+            }
+        });
+    }
+
+    public void createGUI()
+    {    	
+		setLayout(new FlowLayout());		
 		
 		//Create the GUI panel and add all the controls
 		panel = new Panel();
@@ -218,14 +277,23 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		panel.add(seedsLabel, c);		
 		
 		final JToggleButton seedsButton = new JToggleButton("Select seeds");
-		seedsButton.addActionListener(new ActionListener() 
-		{ 
-			public void actionPerformed(ActionEvent e) 
-			{ 				
-				_pickingSeeds = seedsButton.isSelected();		
-				if(_pickingSeeds)
-					IJ.setTool(Toolbar.POINT);				
-			} 	
+		seedsButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+//				ImagePlus currImg = WindowManager.getCurrentImage();
+//				ImageProcessor ip = currImg.getProcessor();				
+//				ip = ip.resize(100, 100, true);				
+//				
+//				ImageRoi imageRoi = new ImageRoi(0, 0, ip);
+//				imageRoi.setZeroTransparent(false);
+//				imageRoi.setOpacity(0.5);
+//				
+//				Overlay overlay = new Overlay();
+//				currImg.setOverlay(overlay);
+//				currImg.setRoi(imageRoi);
+//				currImg.show();
+			}
 		});
 		seedsButton.addKeyListener(IJ.getInstance());
 		c.gridx = 1;		
@@ -234,14 +302,6 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		panel.add(seedsButton, c);
 		
 		JButton seedsResetButton = new JButton("Reset seeds");
-		seedsResetButton.addActionListener(new ActionListener() 
-		{ 
-			public void actionPerformed(ActionEvent e) 
-			{ 				
-				imp.deleteRoi();
-				_seeds.clear();	
-			} 	
-		});
 		seedsResetButton.addKeyListener(IJ.getInstance());
 		c.gridx = 2;		
 		c.gridy = 1;
@@ -321,40 +381,43 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		
 		pack();
 		GUI.center(this);
-		setVisible(true);
-				
+		setVisible(true);		
+		
 		//Connect the slider and text fields so when one updates, so does the other
 		bindSliderAndTextField(objThresholdSlider, objThresholdField);
 		bindSliderAndTextField(binaryThresholdSlider, binaryThresholdField);
-	}
+    }
     
-    /**
-     * Connects a [0, 100] slider to a text field so that when one updates the other
-     * follows. The displayed value will also be divided by 100, so that it seems we're
-     * manipulating a [0, 1] number
-     * @param slider A JSlider with min set to 0 and max set to 100
-     * @param text A JTextField
-     */
-    public void bindSliderAndTextField(final JSlider slider, final JTextField text)
+    public void focusGained(FocusEvent e)
     {
-    	slider.addChangeListener(new ChangeListener(){
-            @Override
-            public void stateChanged(ChangeEvent e) {
-            	text.setText(String.valueOf((slider.getValue()) / 100.0));
-            }
-        });
-    	text.addKeyListener(new KeyAdapter(){
-            @Override
-            public void keyReleased(KeyEvent ke) {
-            	String typed = text.getText();
-            	slider.setValue(0);
-                if(!typed.matches("\\d+(\\.\\d*)?")) {
-                    return;
-                }
-                double value = Double.parseDouble(typed);
-                slider.setValue((int)(value * 100.0));
-            }
-        });
+    	updateCurrentImageReference();
+    }
+    
+    public void updateCurrentImageReference()
+    {    	
+    	//Get the current image and set it into _currentImage
+    	_currentImage = WindowManager.getCurrentImage();
+    	if(_currentImage == null)
+    		return;
+    			
+    	//Start listening for mouse clicks on the image (for seed capture)
+		_currentImage.getCanvas().addMouseListener(this);		
+				
+		//Set _currentSegment to the respective segment stack
+		if(_imageSegmentMap.containsKey(_currentImage))
+		{
+			_currentSegment = _imageSegmentMap.get(_currentImage);
+			
+			System.out.println("Selecting segment tied to image \"" + _currentImage.getTitle() + "\"");
+		}
+		else
+		{
+			SegmentStack seg = new SegmentStack();
+			_imageSegmentMap.putIfAbsent(_currentImage, seg);
+			_currentSegment = seg;
+			
+			System.out.println("New segment tied to image \"" + _currentImage.getTitle() + "\"");
+		}
     }
     
 	public void run(String arg) 
@@ -364,7 +427,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     
 	public void actionPerformed(ActionEvent e) 
 	{
-		ImagePlus imp = WindowManager.getCurrentImage();
+		ImagePlus imp = WindowManager.getCurrentImage();		
 		
 		if (imp==null) 
 		{
@@ -399,6 +462,31 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			instance = null;
 	}
 
+	public void mousePressed(MouseEvent e) 
+	{
+		if(_pickingSeeds || true)
+		{									
+			int x = e.getX();
+			int y = e.getY();
+			int z = _currentImage.getCurrentSlice() - 1; //Returns a one-based index
+			
+			//Compensate for image manipulation
+			ImageCanvas canvas = _currentImage.getCanvas();
+			x = canvas.offScreenX(x);
+			y = canvas.offScreenY(y);			
+			
+			Point3D newPt = new Point3D(x, y, z);
+			
+			_currentSegment._seeds.add(newPt);			
+			System.out.println("New seed: " + newPt.toString());				
+		}		
+	}
+
+	public void mouseClicked(MouseEvent e) {}
+	public void mouseReleased(MouseEvent e) {}
+	public void mouseEntered(MouseEvent e) {}
+	public void mouseExited(MouseEvent e) {}
+	
 	public static void main(String[] args) 
 	{
 		// set the plugins.dir property to make the plugin appear in the Plugins menu
@@ -417,27 +505,4 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");		
 	}
-
-	public void mousePressed(MouseEvent e) 
-	{
-		if(_pickingSeeds)
-		{						
-			ImagePlus imp = WindowManager.getCurrentImage();
-			Roi roi = imp.getRoi();
-			
-			if(roi != null && roi instanceof PointRoi)
-			{
-				PointRoi ptRoy = (PointRoi)roi;
-				int num = ptRoy.getNCoordinates();
-				
-				Polygon poly = ptRoy.getPolygon();
-				IJ.showStatus(Integer.toString(num) + ", " + poly.toString());
-			}					
-		}		
-	}
-
-	public void mouseClicked(MouseEvent e) {}
-	public void mouseReleased(MouseEvent e) {}
-	public void mouseEntered(MouseEvent e) {}
-	public void mouseExited(MouseEvent e) {}
 }
