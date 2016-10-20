@@ -31,6 +31,7 @@ import javax.swing.event.ChangeListener;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GUI;
 import ij.gui.ImageCanvas;
@@ -413,6 +414,9 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		else
 		{
 			SegmentStack seg = new SegmentStack();
+			ImageStack stack = _currentImage.getStack();
+			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), stack.getBitDepth());			
+			
 			_imageSegmentMap.putIfAbsent(_currentImage, seg);
 			_currentSegment = seg;
 			
