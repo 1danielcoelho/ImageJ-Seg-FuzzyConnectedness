@@ -39,6 +39,7 @@ import ij.WindowManager;
 import ij.gui.GUI;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageRoi;
+import ij.gui.NewImage;
 import ij.gui.Overlay;
 import ij.gui.Roi;
 import ij.plugin.frame.PlugInFrame;
@@ -420,7 +421,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		{
     			SegmentStack seg = new SegmentStack();
     			ImageStack stack = img.getStack();
-    			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), stack.getBitDepth());			
+    			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), 8);    			
     			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
@@ -436,10 +437,23 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		ImageProcessor ip = imp.getProcessor();
 		ip = ip.resize(100, 100, true);
 		
+		ImageStack stack = imp.getStack();
+		ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), 8);		
+		
+		test displaying this
+		
+		int[] pixels = new int[ip.getWidth() * ip.getHeight()];
+		for(int i = 0; i < pixels.length; i++)
+		{
+			pixels[i] = (i % 2) * 0xFFFFFFFF;
+		}
+		
+		ip.setPixels(pixels);
+		
 		ImageRoi roy = new ImageRoi(0, 0, ip);
 		roy.setZeroTransparent(false);
 		roy.setOpacity(0.5);		
-				
+		
 		Overlay overlay = new Overlay();
 		overlay.add(roy);
 				
