@@ -17,6 +17,8 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -283,18 +285,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-//				ImagePlus currImg = WindowManager.getCurrentImage();
-//				ImageProcessor ip = currImg.getProcessor();				
-//				ip = ip.resize(100, 100, true);				
-//				
-//				ImageRoi imageRoi = new ImageRoi(0, 0, ip);
-//				imageRoi.setZeroTransparent(false);
-//				imageRoi.setOpacity(0.5);
-//				
-//				Overlay overlay = new Overlay();
-//				currImg.setOverlay(overlay);
-//				currImg.setRoi(imageRoi);
-//				currImg.show();
+				_pickingSeeds = !_pickingSeeds;
 			}
 		});
 		seedsButton.addKeyListener(IJ.getInstance());
@@ -394,8 +385,30 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     {    	
     	//Get the current image and set it into _currentImage
     	String[] titles = WindowManager.getImageTitles();    	
+    	int numTitles = titles.length; 
     	
-    	int numTitles = titles.length;
+    	//Delete segments without a corresponding ImagePlus (has been deleted)
+    	for(Iterator<HashMap.Entry<ImagePlus, SegmentStack>> it = _imageSegmentMap.entrySet().iterator(); it.hasNext(); ) 
+    	{
+    	    HashMap.Entry<ImagePlus, SegmentStack> entry = it.next();
+    	      
+    	    String title = entry.getKey().getTitle();    	    
+    	    boolean contained = false;
+    	    
+    	    for(int i = 0; i < numTitles; i++)
+    	    {
+    	    	if(titles[i].equals(title))
+    	    		contained = true;
+    	    }
+    	      
+    	    if(!contained)
+    	    {
+    	    	System.out.println("Removing " + title + "'s segment");
+    	        it.remove();
+    	    }
+	    }  	
+    	
+    	//Add a segment for each active ImagePlus
     	for(int i = 0; i < numTitles; i++)
     	{
     		ImagePlus img = WindowManager.getImage(titles[i]);    		
@@ -414,6 +427,8 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     			System.out.println("New segment tied to image \"" + img.getTitle() + "\"");
     		}
     	}
+    	
+    	System.out.println("Current number of segments: " + _imageSegmentMap.size());
     }
     
     public void drawOverlay(ImagePlus imp)
@@ -477,7 +492,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 
 	public void mousePressed(MouseEvent e) 
 	{
-		if(_pickingSeeds || true)
+		if(_pickingSeeds)
 		{							
 			ImagePlus img = WindowManager.getCurrentImage();
 			
@@ -508,13 +523,15 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		updateSegmentDictionary();
 		
 		drawOverlay(imp);
-		System.out.println("Opened");
+		System.out.println("Opened " + imp.getTitle());
 	}
 
 	@Override
 	public void imageClosed(ImagePlus imp) 
 	{	
-		System.out.println("Closed");
+		updateSegmentDictionary();
+		
+		System.out.println("Closed " + imp.getTitle());
 	}
 
 	@Override
@@ -526,7 +543,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			return;
 		
 		drawOverlay(imp);
-		System.out.println("Updated");
+		System.out.println("Updated " + imp.getTitle());
 	}
 	
 	public static void main(String[] args) 
