@@ -30,28 +30,26 @@ import javax.swing.event.ChangeListener;
 
 import ij.IJ;
 import ij.ImageJ;
+import ij.ImageListener;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
 import ij.gui.GUI;
 import ij.gui.ImageCanvas;
+import ij.gui.ImageRoi;
+import ij.gui.Overlay;
 import ij.gui.Roi;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener, FocusListener
+public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener, ImageListener
 {
 	private Panel panel;
 	private int previousID;
 	private static Frame instance;
 	private boolean _pickingSeeds = false;
 	
-	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();
-	
-	//ImageStack.createEmptyStack()
-	
-	private ImagePlus _currentImage;	
-	private SegmentStack _currentSegment;
+	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();	
 	
 	class Runner extends Thread 
 	{ 
@@ -209,8 +207,11 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		}		
 		instance = this;
 		addKeyListener(IJ.getInstance());	
+		ImagePlus.addImageListener(this);
 		
-		updateCurrentImageReference();
+		updateSegmentDictionary();
+		
+		drawOverlay(WindowManager.getCurrentImage());
 		
 		createGUI();
 	}
@@ -389,39 +390,47 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		bindSliderAndTextField(binaryThresholdSlider, binaryThresholdField);
     }
     
-    public void focusGained(FocusEvent e)
-    {
-    	updateCurrentImageReference();
-    }
-    
-    public void updateCurrentImageReference()
+    public void updateSegmentDictionary()
     {    	
     	//Get the current image and set it into _currentImage
-    	_currentImage = WindowManager.getCurrentImage();
-    	if(_currentImage == null)
-    		return;
+    	String[] titles = WindowManager.getImageTitles();    	
+    	
+    	int numTitles = titles.length;
+    	for(int i = 0; i < numTitles; i++)
+    	{
+    		ImagePlus img = WindowManager.getImage(titles[i]);    		
+    		
+    		img.getCanvas().removeMouseListener(this);    		
+    		img.getCanvas().addMouseListener(this);
+    		
+    		if(!_imageSegmentMap.containsKey(img))
+    		{
+    			SegmentStack seg = new SegmentStack();
+    			ImageStack stack = img.getStack();
+    			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), stack.getBitDepth());			
     			
-    	//Start listening for mouse clicks on the image (for seed capture)
-		_currentImage.getCanvas().addMouseListener(this);		
+    			_imageSegmentMap.putIfAbsent(img, seg);
+    			
+    			System.out.println("New segment tied to image \"" + img.getTitle() + "\"");
+    		}
+    	}
+    }
+    
+    public void drawOverlay(ImagePlus imp)
+    {       	
+		ImageProcessor ip = imp.getProcessor();
+		ip = ip.resize(100, 100, true);
+		
+		ImageRoi roy = new ImageRoi(0, 0, ip);
+		roy.setZeroTransparent(false);
+		roy.setOpacity(0.5);		
 				
-		//Set _currentSegment to the respective segment stack
-		if(_imageSegmentMap.containsKey(_currentImage))
-		{
-			_currentSegment = _imageSegmentMap.get(_currentImage);
-			
-			System.out.println("Selecting segment tied to image \"" + _currentImage.getTitle() + "\"");
-		}
-		else
-		{
-			SegmentStack seg = new SegmentStack();
-			ImageStack stack = _currentImage.getStack();
-			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), stack.getBitDepth());			
-			
-			_imageSegmentMap.putIfAbsent(_currentImage, seg);
-			_currentSegment = seg;
-			
-			System.out.println("New segment tied to image \"" + _currentImage.getTitle() + "\"");
-		}
+		Overlay overlay = new Overlay();
+		overlay.add(roy);
+				
+		imp.setOverlay(overlay);				
+		
+		imp.show();				
     }
     
 	public void run(String arg) 
@@ -469,19 +478,21 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 	public void mousePressed(MouseEvent e) 
 	{
 		if(_pickingSeeds || true)
-		{									
+		{							
+			ImagePlus img = WindowManager.getCurrentImage();
+			
 			int x = e.getX();
 			int y = e.getY();
-			int z = _currentImage.getCurrentSlice() - 1; //Returns a one-based index
+			int z = img.getCurrentSlice() - 1; //Returns a one-based index
 			
 			//Compensate for image manipulation
-			ImageCanvas canvas = _currentImage.getCanvas();
+			ImageCanvas canvas = img.getCanvas();
 			x = canvas.offScreenX(x);
 			y = canvas.offScreenY(y);			
 			
 			Point3D newPt = new Point3D(x, y, z);
 			
-			_currentSegment._seeds.add(newPt);			
+			_imageSegmentMap.get(img)._seeds.add(newPt);			
 			System.out.println("New seed: " + newPt.toString());				
 		}		
 	}
@@ -490,6 +501,33 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 	public void mouseReleased(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
+
+	@Override
+	public void imageOpened(ImagePlus imp) 
+	{	
+		updateSegmentDictionary();
+		
+		drawOverlay(imp);
+		System.out.println("Opened");
+	}
+
+	@Override
+	public void imageClosed(ImagePlus imp) 
+	{	
+		System.out.println("Closed");
+	}
+
+	@Override
+	public void imageUpdated(ImagePlus imp) 
+	{		
+		//When we first open an image, IJ itself setting its title triggers imageUpdated.
+		//If we run drawOverlay then, we'll crash, so we catch for these cases below		
+		if(imp == null || imp.getTitle() == "" || !imp.isVisible())
+			return;
+		
+		drawOverlay(imp);
+		System.out.println("Updated");
+	}
 	
 	public static void main(String[] args) 
 	{
