@@ -17,6 +17,7 @@ import java.awt.image.DirectColorModel;
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
@@ -44,8 +45,10 @@ import ij.gui.NewImage;
 import ij.gui.Overlay;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
+import ij.plugin.DICOM;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
+import ij.util.DicomTools;
 
 public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener, ImageListener
 {
@@ -201,7 +204,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		int width;
 		int height;
 		int depth;
-		byte[][] _stack;
+		byte[] _stack;
 	}
 	
     public Process_Pixels() 
@@ -480,7 +483,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     			seg.width = stack.getWidth();
     			seg.height = stack.getHeight();
     			seg.depth = stack.getSize();    			    			        			
-    			seg._stack = new byte[seg.depth][seg.width * seg.height];
+    			seg._stack = new byte[seg.width * seg.height * seg.depth];
     			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
@@ -500,7 +503,11 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	//Create the segment image
     	ImagePlus segImp = NewImage.createByteImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
     	ImageProcessor ip = segImp.getProcessor();    	
-    	ip.setPixels(segStack._stack[currIndex]);    	
+    	
+    	int start = currIndex * (segStack.width * segStack.height);
+    	int end = start + segStack.width * segStack.height;
+    	byte[] pix = Arrays.copyOfRange(segStack._stack, start, end);    	
+    	ip.setPixels(pix);    	
     	
     	//Paint seeds full white
     	Overlay overlay = new Overlay();	
@@ -517,7 +524,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		ImageRoi roy = new ImageRoi(0, 0, ip);
 		roy.setZeroTransparent(true);			
 		//roy.setOpacity(_opacity);
-		roy.setOpacity(1.0);
+		roy.setOpacity(0.5);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
@@ -545,104 +552,62 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	seg._stack = new byte[seg.depth][seg.width * seg.height];
+    	seg._stack = new byte[seg.width * seg.height * seg.depth];
     	
     	img.updateAndDraw();
     }
     
     public void runSegmentation()
-    {
+    {    	
     	ImagePlus img = WindowManager.getCurrentImage();
-    	
-    	if(!_imageSegmentMap.containsKey(img))
+    	    	
+    	System.out.println("Channels: " + img.getNChannels() + ", Bit depth: " + img.getBitDepth());
+    	    	
+    	if(!_imageSegmentMap.containsKey(img) || img.getNChannels() > 1)
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	seg._stack = new byte[seg.depth][seg.width * seg.height];
+    	byte[] segStack = new byte[seg.width * seg.height * seg.depth];
+    	seg._stack = segStack;    	    	
     	
-    	for(int i = 0; i < img.getNSlices(); i++)
+    	ImageStack stack = img.getStack();
+    	    	
+    	int numSlices = stack.getSize();
+    	int pixelsPerSlice = stack.getWidth() * stack.getHeight();
+    	short[][] imagePixels = new short[numSlices][];
+    	
+    	//Grab references to the pixels of the entire stack
+    	for(int i = 0; i < numSlices; i++)
+    	{    		
+    		imagePixels[i] = (short[]) stack.getProcessor(i + 1).getPixels();    		
+    	}
+    	
+    	short threshold = (short)(2.0 * (_opacity - 0.5) * 5000);   	
+    	
+    	//Maybe due to how it handles signed numbers, if the DICOM image is signed, we need to subtract
+    	//32768 (max short) from the value to get the true intended value. We add this to the threshold
+    	//and perform comparison with doubles
+    	String pixelRepresentation = DicomTools.getTag(img, "0028,0103");
+    	short offset = 0;
+    	if(pixelRepresentation != null && Integer.parseInt(pixelRepresentation.trim()) == 1)
+    		offset = (short) 32768;
+    	 	
+    	System.out.println("Thresholding with " + threshold);    	
+    	
+    	for(int i = 0; i < numSlices; i++)
     	{
-    		ImageStack stack = img.getStack();
-    		
-    		System.out.println(stack.getSize());
-    		
-    		ImageProcessor ip = img.getStack().getProcessor(i+1);
-    		
-    		int channels = ip.getNChannels();
-    		int depth = ip.getBitDepth();    		
-    		
-    		if(channels > 1) continue;
-    		    	
-    		switch(depth)
-    		{
-    		case 8:
-    			thresholdSegmentation((byte[])ip.getPixels(), seg._stack[i], (byte)(_opacity * Byte.MAX_VALUE));
-    			break;
-    		case 16:
-    			thresholdSegmentation((short[])ip.getPixels(), seg._stack[i], (short)(_opacity * Short.MAX_VALUE));
-    			break;
-    		case 32:
-    			thresholdSegmentation((int[])ip.getPixels(), seg._stack[i], (int)(_opacity * Integer.MAX_VALUE));
-    			break;
-    		case 64:
-    			thresholdSegmentation((long[])ip.getPixels(), seg._stack[i], (int)(_opacity * Long.MAX_VALUE));
-    			break;
-    		}    		    		
+    		short[] slice = imagePixels[i];
+    		for(int j = 0; j < pixelsPerSlice; j++)
+    		{    			
+    			short val = (short)(slice[j] - offset);     			
+        		if(val > threshold)
+        			segStack[i * pixelsPerSlice + j] = (byte)255;
+        		else
+        			segStack[i * pixelsPerSlice + j] = 0;  
+    		}
     	}
     	
     	img.updateAndDraw();
-    }
-    
-    public void thresholdSegmentation(byte[] image, byte[] seg, byte threshold)
-    {    	
-    	System.out.println(threshold);
-    	
-    	for(int i = 0; i < seg.length; i++)
-    	{
-    		if(image[i] > threshold)
-    			seg[i] = (byte)255;
-    		else
-    			seg[i] = 0;    			
-    	}
-    }
-    
-    public void thresholdSegmentation(short[] image, byte[] seg, short threshold)
-    {   
-    	System.out.println(threshold);
-    	
-    	for(int i = 0; i < seg.length; i++)
-    	{
-    		if(image[i] > threshold)
-    			seg[i] = (byte)255;
-    		else
-    			seg[i] = 0;    			
-    	}
-    }
-    
-    public void thresholdSegmentation(int[] image, byte[] seg, int threshold)
-    {    	
-    	System.out.println(threshold);
-    	
-    	for(int i = 0; i < seg.length; i++)
-    	{
-    		if(image[i] > threshold)
-    			seg[i] = (byte)255;
-    		else
-    			seg[i] = 0;    			
-    	}
-    }
-    
-    public void thresholdSegmentation(long[] image, byte[] seg, long threshold)
-    {    	
-    	System.out.println(threshold);
-    	
-    	for(int i = 0; i < seg.length; i++)
-    	{
-    		if(image[i] > threshold)
-    			seg[i] = (byte)255;
-    		else
-    			seg[i] = 0;    			
-    	}
     }
     
 	public void actionPerformed(ActionEvent e) 
@@ -702,9 +667,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			SegmentStack seg = _imageSegmentMap.get(img);			
 			seg._seeds.add(newPt);			
 			
-			img.updateAndDraw();
-			
-			System.out.println("New seed: " + newPt.toString());				
+			img.updateAndDraw();			
 		}		
 	}
 
@@ -719,15 +682,12 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		updateSegmentDictionary();
 		
 		drawOverlay(imp);
-		System.out.println("Opened " + imp.getTitle());
 	}
 
 	@Override
 	public void imageClosed(ImagePlus imp) 
 	{	
 		updateSegmentDictionary();
-		
-		System.out.println("Closed " + imp.getTitle());
 	}
 
 	@Override
@@ -739,7 +699,6 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			return;
 		
 		drawOverlay(imp);
-		System.out.println("Updated " + imp.getTitle());
 	}
 	
 	public static void main(String[] args) 
