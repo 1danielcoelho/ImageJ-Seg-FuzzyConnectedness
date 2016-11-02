@@ -13,6 +13,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
+import java.awt.image.DirectColorModel;
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ import ij.gui.ImageCanvas;
 import ij.gui.ImageRoi;
 import ij.gui.NewImage;
 import ij.gui.Overlay;
+import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
@@ -198,7 +200,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		int width;
 		int height;
 		int depth;
-		int[] _stack;
+		byte[][] _stack;
 	}
 	
     public Process_Pixels() 
@@ -296,6 +298,13 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		panel.add(seedsButton, c);
 		
 		JButton seedsResetButton = new JButton("Reset seeds");
+		seedsResetButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				clearSeeds();
+			}
+		});
 		seedsResetButton.addKeyListener(IJ.getInstance());
 		c.gridx = 2;		
 		c.gridy = 1;
@@ -420,12 +429,17 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		if(!_imageSegmentMap.containsKey(img))
     		{
     			SegmentStack seg = new SegmentStack();
-    			ImageStack stack = img.getStack();
-    			ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), 8);    			
     			
+    			ImageStack stack = img.getStack();
+    			
+    			seg.width = stack.getWidth();
+    			seg.height = stack.getHeight();
+    			seg.depth = stack.getSize();    			    			        			
+    			seg._stack = new byte[seg.depth][seg.width * seg.height];
+    			    			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
-    			System.out.println("New segment tied to image \"" + img.getTitle() + "\"");
+    			System.out.println("New segment tied to image \"" + img.getTitle() + "\", with size " + stack.getWidth() + ", " + stack.getHeight() + ", " + stack.getSize());
     		}
     	}
     	
@@ -433,33 +447,47 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     }
     
     public void drawOverlay(ImagePlus imp)
-    {       	
-		ImageProcessor ip = imp.getProcessor();
-		ip = ip.resize(100, 100, true);
-		
-		ImageStack stack = imp.getStack();
-		ImageStack segStack = ImageStack.create(stack.getWidth(), stack.getHeight(), stack.getSize(), 8);		
-		
-		test displaying this
-		
-		int[] pixels = new int[ip.getWidth() * ip.getHeight()];
-		for(int i = 0; i < pixels.length; i++)
-		{
-			pixels[i] = (i % 2) * 0xFFFFFFFF;
-		}
-		
-		ip.setPixels(pixels);
-		
+    {       			
+    	SegmentStack segStack = _imageSegmentMap.get(imp);    	
+				
+    	int currIndex = imp.getCurrentSlice() - 1;
+    	
+    	//Create the segment image
+    	ImagePlus segImp = NewImage.createByteImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
+    	ImageProcessor ip = segImp.getProcessor();    	
+    	ip.setPixels(segStack._stack[currIndex]);    	
+    	
+    	//Paint seeds full white
+    	Overlay overlay = new Overlay();	
+    	for(int i = 0; i < segStack._seeds.size(); i++)
+    	{
+    		Point3D seed = segStack._seeds.get(i);    		
+    		
+    		if(seed.z != currIndex) continue;
+    		
+    		PointRoi a = new PointRoi(seed.x, seed.y);    		
+    		overlay.add(a);
+    	}	
+    	
 		ImageRoi roy = new ImageRoi(0, 0, ip);
-		roy.setZeroTransparent(false);
-		roy.setOpacity(0.5);		
-		
-		Overlay overlay = new Overlay();
+		roy.setZeroTransparent(true);					
 		overlay.add(roy);
 				
-		imp.setOverlay(overlay);				
-		
+		imp.setOverlay(overlay);			
 		imp.show();				
+    }
+    
+    public void clearSeeds()
+    {
+    	ImagePlus img = WindowManager.getCurrentImage();
+    	
+    	if(!_imageSegmentMap.containsKey(img))
+    		return;
+    	
+    	SegmentStack seg = _imageSegmentMap.get(img); 
+    	seg._seeds.clear();
+    	
+    	img.updateAndDraw();
     }
     
 	public void run(String arg) 
@@ -521,7 +549,11 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			
 			Point3D newPt = new Point3D(x, y, z);
 			
-			_imageSegmentMap.get(img)._seeds.add(newPt);			
+			SegmentStack seg = _imageSegmentMap.get(img);			
+			seg._seeds.add(newPt);			
+			
+			img.updateAndDraw();
+			
 			System.out.println("New seed: " + newPt.toString());				
 		}		
 	}
@@ -553,7 +585,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 	{		
 		//When we first open an image, IJ itself setting its title triggers imageUpdated.
 		//If we run drawOverlay then, we'll crash, so we catch for these cases below		
-		if(imp == null || imp.getTitle() == "" || !imp.isVisible())
+		if(!_imageSegmentMap.containsKey(imp))
 			return;
 		
 		drawOverlay(imp);
@@ -572,7 +604,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		new ImageJ();
 
 		// open the Clown sample
-		ImagePlus image = IJ.openImage("http://imagej.net/images/lena.jpg");
+		ImagePlus image = IJ.openImage("http://a-z-animals.com/media/animals/images/original/starfish2.jpg");
 		image.show();
 
 		// run the plugin
