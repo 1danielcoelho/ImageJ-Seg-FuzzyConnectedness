@@ -389,9 +389,23 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		bottomPanel.setLayout(new FlowLayout());
 		
 		JButton runButton = new JButton("Run");
+		runButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				runSegmentation();
+			}
+		});
 		bottomPanel.add(runButton, c);		
 		
 		JButton clearButton = new JButton("Clear");
+		clearButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				clearSegment();
+			}
+		});
 		bottomPanel.add(clearButton, c);	
 		
 		JButton resetButton = new JButton("Reset parameters");
@@ -502,7 +516,8 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	
 		ImageRoi roy = new ImageRoi(0, 0, ip);
 		roy.setZeroTransparent(true);			
-		roy.setOpacity(_opacity);
+		//roy.setOpacity(_opacity);
+		roy.setOpacity(1.0);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
@@ -522,10 +537,113 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	img.updateAndDraw();
     }
     
-	public void run(String arg) 
-	{
-		//IJ.showMessage("run called");
-	}
+    public void clearSegment()
+    {
+    	ImagePlus img = WindowManager.getCurrentImage();
+    	
+    	if(!_imageSegmentMap.containsKey(img))
+    		return;
+    	
+    	SegmentStack seg = _imageSegmentMap.get(img); 
+    	seg._stack = new byte[seg.depth][seg.width * seg.height];
+    	
+    	img.updateAndDraw();
+    }
+    
+    public void runSegmentation()
+    {
+    	ImagePlus img = WindowManager.getCurrentImage();
+    	
+    	if(!_imageSegmentMap.containsKey(img))
+    		return;
+    	
+    	SegmentStack seg = _imageSegmentMap.get(img); 
+    	seg._stack = new byte[seg.depth][seg.width * seg.height];
+    	
+    	for(int i = 0; i < img.getNSlices(); i++)
+    	{
+    		ImageStack stack = img.getStack();
+    		
+    		System.out.println(stack.getSize());
+    		
+    		ImageProcessor ip = img.getStack().getProcessor(i+1);
+    		
+    		int channels = ip.getNChannels();
+    		int depth = ip.getBitDepth();    		
+    		
+    		if(channels > 1) continue;
+    		    	
+    		switch(depth)
+    		{
+    		case 8:
+    			thresholdSegmentation((byte[])ip.getPixels(), seg._stack[i], (byte)(_opacity * Byte.MAX_VALUE));
+    			break;
+    		case 16:
+    			thresholdSegmentation((short[])ip.getPixels(), seg._stack[i], (short)(_opacity * Short.MAX_VALUE));
+    			break;
+    		case 32:
+    			thresholdSegmentation((int[])ip.getPixels(), seg._stack[i], (int)(_opacity * Integer.MAX_VALUE));
+    			break;
+    		case 64:
+    			thresholdSegmentation((long[])ip.getPixels(), seg._stack[i], (int)(_opacity * Long.MAX_VALUE));
+    			break;
+    		}    		    		
+    	}
+    	
+    	img.updateAndDraw();
+    }
+    
+    public void thresholdSegmentation(byte[] image, byte[] seg, byte threshold)
+    {    	
+    	System.out.println(threshold);
+    	
+    	for(int i = 0; i < seg.length; i++)
+    	{
+    		if(image[i] > threshold)
+    			seg[i] = (byte)255;
+    		else
+    			seg[i] = 0;    			
+    	}
+    }
+    
+    public void thresholdSegmentation(short[] image, byte[] seg, short threshold)
+    {   
+    	System.out.println(threshold);
+    	
+    	for(int i = 0; i < seg.length; i++)
+    	{
+    		if(image[i] > threshold)
+    			seg[i] = (byte)255;
+    		else
+    			seg[i] = 0;    			
+    	}
+    }
+    
+    public void thresholdSegmentation(int[] image, byte[] seg, int threshold)
+    {    	
+    	System.out.println(threshold);
+    	
+    	for(int i = 0; i < seg.length; i++)
+    	{
+    		if(image[i] > threshold)
+    			seg[i] = (byte)255;
+    		else
+    			seg[i] = 0;    			
+    	}
+    }
+    
+    public void thresholdSegmentation(long[] image, byte[] seg, long threshold)
+    {    	
+    	System.out.println(threshold);
+    	
+    	for(int i = 0; i < seg.length; i++)
+    	{
+    		if(image[i] > threshold)
+    			seg[i] = (byte)255;
+    		else
+    			seg[i] = 0;    			
+    	}
+    }
     
 	public void actionPerformed(ActionEvent e) 
 	{
