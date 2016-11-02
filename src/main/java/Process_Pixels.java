@@ -53,6 +53,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 	private int previousID;
 	private static Frame instance;
 	private boolean _pickingSeeds = false;
+	private float _opacity = 0.5f;
 	
 	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();	
 	
@@ -354,6 +355,35 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		c.gridy = 4;
 		panel.add(binaryThresholdField, c);
 				
+		JLabel segmentOpacityLabel = new JLabel("Segment opacity");	
+		c.gridx = 0;
+		c.gridy = 5;
+		c.gridwidth = 1;
+		panel.add(segmentOpacityLabel, c);	
+		
+		final JSlider segmentOpacitySlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
+		segmentOpacitySlider.setMajorTickSpacing(10);
+		segmentOpacitySlider.setPaintTicks(true);
+		segmentOpacitySlider.addChangeListener(new ChangeListener()
+		{
+            @Override
+            public void stateChanged(ChangeEvent e) 
+            {
+            	_opacity = segmentOpacitySlider.getValue() / 100.0f;
+            	ImagePlus img = WindowManager.getCurrentImage();
+            	img.updateAndDraw();
+            }
+        });
+		c.gridx = 1;
+		c.gridy = 5;
+		panel.add(segmentOpacitySlider, c);
+		
+		JTextField segmentOpacityField = new JTextField(5);
+		segmentOpacityField.setText("0.5");
+		c.gridx = 2;
+		c.gridy = 5;
+		panel.add(segmentOpacityField, c);
+		
 		//Create a bottom panel for the main execution controls
 		Panel bottomPanel = new Panel();
 		bottomPanel.setLayout(new FlowLayout());
@@ -375,7 +405,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		c.gridwidth = 3;
 		c.gridheight = 1;
 		c.gridx = 0;
-		c.gridy = 5;
+		c.gridy = 6;
 		c.fill = c.BOTH;
 		panel.add(bottomPanel, c);
 		
@@ -389,6 +419,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		//Connect the slider and text fields so when one updates, so does the other
 		bindSliderAndTextField(objThresholdSlider, objThresholdField);
 		bindSliderAndTextField(binaryThresholdSlider, binaryThresholdField);
+		bindSliderAndTextField(segmentOpacitySlider, segmentOpacityField);
     }
     
     public void updateSegmentDictionary()
@@ -436,7 +467,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     			seg.height = stack.getHeight();
     			seg.depth = stack.getSize();    			    			        			
     			seg._stack = new byte[seg.depth][seg.width * seg.height];
-    			    			
+    			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
     			System.out.println("New segment tied to image \"" + img.getTitle() + "\", with size " + stack.getWidth() + ", " + stack.getHeight() + ", " + stack.getSize());
@@ -470,7 +501,8 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	}	
     	
 		ImageRoi roy = new ImageRoi(0, 0, ip);
-		roy.setZeroTransparent(true);					
+		roy.setZeroTransparent(true);			
+		roy.setOpacity(_opacity);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
