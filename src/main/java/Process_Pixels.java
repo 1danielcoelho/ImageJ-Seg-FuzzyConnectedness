@@ -560,6 +560,8 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     
     public void runSegmentation()
     {    	
+    	DialCache dial = new DialCache();    	
+    	
     	ImagePlus img = WindowManager.getCurrentImage();
     	    	
     	System.out.println("Channels: " + img.getNChannels() + ", Bit depth: " + img.getBitDepth());
@@ -574,7 +576,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	ImageStack stack = img.getStack();
     	    	
     	int numSlices = stack.getSize();
-    	int pixelsPerSlice = stack.getWidth() * stack.getHeight();
+    	int pixelsPerSlice = stack.getWidth() * stack.getHeight(); 
     	short[][] imagePixels = new short[numSlices][];
     	
     	//Grab references to the pixels of the entire stack
