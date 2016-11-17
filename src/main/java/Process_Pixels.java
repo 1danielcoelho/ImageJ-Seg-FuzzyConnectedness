@@ -45,6 +45,7 @@ import ij.gui.NewImage;
 import ij.gui.Overlay;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
+import ij.measure.Calibration;
 import ij.plugin.DICOM;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
@@ -204,7 +205,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		int width;
 		int height;
 		int depth;
-		byte[] _stack;
+		short[] _stack;
 	}
 	
     public Process_Pixels() 
@@ -483,7 +484,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     			seg.width = stack.getWidth();
     			seg.height = stack.getHeight();
     			seg.depth = stack.getSize();    			    			        			
-    			seg._stack = new byte[seg.width * seg.height * seg.depth];
+    			seg._stack = new short[seg.width * seg.height * seg.depth];
     			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
@@ -501,12 +502,12 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	int currIndex = imp.getCurrentSlice() - 1;
     	
     	//Create the segment image
-    	ImagePlus segImp = NewImage.createByteImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
-    	ImageProcessor ip = segImp.getProcessor();    	
+    	ImagePlus segImp = NewImage.createShortImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
+    	ImageProcessor ip = segImp.getProcessor();
     	
     	int start = currIndex * (segStack.width * segStack.height);
     	int end = start + segStack.width * segStack.height;
-    	byte[] pix = Arrays.copyOfRange(segStack._stack, start, end);    	
+    	short[] pix = Arrays.copyOfRange(segStack._stack, start, end);    	
     	ip.setPixels(pix);    	
     	
     	//Paint seeds full white
@@ -524,7 +525,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		ImageRoi roy = new ImageRoi(0, 0, ip);
 		roy.setZeroTransparent(true);			
 		//roy.setOpacity(_opacity);
-		roy.setOpacity(0.5);
+		roy.setOpacity(0.8);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
@@ -552,7 +553,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	seg._stack = new byte[seg.width * seg.height * seg.depth];
+    	seg._stack = new short[seg.width * seg.height * seg.depth];
     	
     	img.updateAndDraw();
     }
@@ -567,7 +568,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	byte[] segStack = new byte[seg.width * seg.height * seg.depth];
+    	short[] segStack = new short[seg.width * seg.height * seg.depth];
     	seg._stack = segStack;    	    	
     	
     	ImageStack stack = img.getStack();
@@ -600,8 +601,8 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		for(int j = 0; j < pixelsPerSlice; j++)
     		{    			
     			short val = (short)(slice[j] - offset);     			
-        		if(val > threshold)
-        			segStack[i * pixelsPerSlice + j] = (byte)255;
+        		if(val < threshold)
+        			segStack[i * pixelsPerSlice + j] = Short.MAX_VALUE - 1;
         		else
         			segStack[i * pixelsPerSlice + j] = 0;  
     		}
@@ -663,6 +664,14 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			y = canvas.offScreenY(y);			
 			
 			Point3D newPt = new Point3D(x, y, z);
+			
+			int[] a = img.getPixel(x, y);						
+			Calibration b = img.getCalibration();			
+			double[] coeffs = b.getCoefficients();
+			
+			short finalvalue = (short)(a[0] * coeffs[1] + coeffs[0]);
+			
+			System.out.println("Value: " + finalvalue);
 			
 			SegmentStack seg = _imageSegmentMap.get(img);			
 			seg._seeds.add(newPt);			
