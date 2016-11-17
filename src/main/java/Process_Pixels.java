@@ -511,7 +511,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	ip.setPixels(pix);    	
     	
     	//Paint seeds full white
-    	Overlay overlay = new Overlay();	
+    	Overlay overlay = new Overlay();    	
     	for(int i = 0; i < segStack._seeds.size(); i++)
     	{
     		Point3D seed = segStack._seeds.get(i);    		
@@ -583,28 +583,31 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		imagePixels[i] = (short[]) stack.getProcessor(i + 1).getPixels();    		
     	}
     	
+    	//Threshold from 0 to 1
     	short threshold = (short)(2.0 * (_opacity - 0.5) * 5000);   	
+    	    	 	
+    	double[] coeffs = img.getCalibration().getCoefficients();
+    	double a = coeffs[1];
+    	double b = coeffs[0];
     	
-    	//Maybe due to how it handles signed numbers, if the DICOM image is signed, we need to subtract
-    	//32768 (max short) from the value to get the true intended value. We add this to the threshold
-    	//and perform comparison with doubles
-    	String pixelRepresentation = DicomTools.getTag(img, "0028,0103");
-    	short offset = 0;
-    	if(pixelRepresentation != null && Integer.parseInt(pixelRepresentation.trim()) == 1)
-    		offset = (short) 32768;
-    	 	
-    	System.out.println("Thresholding with " + threshold);    	
+    	System.out.println("Thresholding with " + threshold);  
+    	
+    	//Convert the threshold to the same raw space that the image is in
+    	threshold = (short)((threshold - b) / a);
+    	
+    	System.out.println("Thresholding with raw " + threshold);    	
     	
     	for(int i = 0; i < numSlices; i++)
     	{
     		short[] slice = imagePixels[i];
     		for(int j = 0; j < pixelsPerSlice; j++)
-    		{    			
-    			short val = (short)(slice[j] - offset);     			
-        		if(val < threshold)
-        			segStack[i * pixelsPerSlice + j] = Short.MAX_VALUE - 1;
+    		{    			 			
+    			short val = slice[j];
+    			
+        		if(val > threshold)
+        			segStack[i * pixelsPerSlice + j] = 0;
         		else
-        			segStack[i * pixelsPerSlice + j] = 0;  
+        			segStack[i * pixelsPerSlice + j] = Short.MIN_VALUE; 
     		}
     	}
     	
