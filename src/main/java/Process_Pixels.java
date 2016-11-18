@@ -40,6 +40,7 @@ import ij.gui.PointRoi;
 import ij.measure.Calibration;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
+import ij.process.LUT;
 
 public class Process_Pixels extends PlugInFrame implements MouseListener, ImageListener
 {
@@ -327,7 +328,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     			seg.width = stack.getWidth();
     			seg.height = stack.getHeight();
     			seg.depth = stack.getSize();    			    			        			
-    			seg._stack = new short[seg.width * seg.height * seg.depth];
+    			seg.stack = new float[seg.width * seg.height * seg.depth];
     			
     			_imageSegmentMap.putIfAbsent(img, seg);
     			
@@ -345,15 +346,18 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	int currIndex = imp.getCurrentSlice() - 1;
     	
     	//Create the segment image
-    	ImagePlus segImp = NewImage.createShortImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
+    	ImagePlus segImp = NewImage.createFloatImage(imp.getTitle() + "_SEG", segStack.width, segStack.height, 1, 0);    	
     	ImageProcessor ip = segImp.getProcessor();
     	
     	int start = currIndex * (segStack.width * segStack.height);
     	int end = start + segStack.width * segStack.height;
-    	short[] pix = Arrays.copyOfRange(segStack._stack, start, end);    	
+    	float[] pix = Arrays.copyOfRange(segStack.stack, start, end);    	
     	ip.setPixels(pix);    	
     	
-    	//Paint seeds full white
+    	if(ip.isInvertedLut())
+    		ip.invertLut();
+    	
+    	//Display seeds that are in this slice
     	Overlay overlay = new Overlay();    	
     	for(int i = 0; i < segStack.seeds.size(); i++)
     	{
@@ -365,10 +369,10 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		overlay.add(a);
     	}	
     	
-		ImageRoi roy = new ImageRoi(0, 0, ip);
-		roy.setZeroTransparent(true);			
+		ImageRoi roy = new ImageRoi(0, 0, ip);		
+		//roy.setZeroTransparent(true);			
 		//roy.setOpacity(_opacity);
-		roy.setOpacity(0.8);
+		roy.setOpacity(0.5);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
@@ -396,15 +400,13 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	seg._stack = new short[seg.width * seg.height * seg.depth];
+    	seg.stack = new float[seg.width * seg.height * seg.depth];
     	
     	img.updateAndDraw();
     }
     
     public void runSegmentation()
-    {    	
-    	DialCache dial = new DialCache();    	
-    	
+    {    	    	
     	ImagePlus img = WindowManager.getCurrentImage();
     	    	
     	System.out.println("Channels: " + img.getNChannels() + ", Bit depth: " + img.getBitDepth());
@@ -413,24 +415,24 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	short[] segStack = new short[seg.width * seg.height * seg.depth];
-    	seg._stack = segStack;    	    	
+    	float[] segStack = new float[seg.width * seg.height * seg.depth];
+    	seg.stack = segStack;    	    	
     	
     	ImageStack stack = img.getStack();
     	    	
     	int numSlices = stack.getSize();
     	int pixelsPerSlice = stack.getWidth() * stack.getHeight(); 
-    	short[][] imagePixels = new short[numSlices][];
+    	short[] imagePixels = new short[seg.width * seg.height * seg.depth];
     	
     	//Grab references to the pixels of the entire stack
+    	int sliceSize = seg.width * seg.height;
     	for(int i = 0; i < numSlices; i++)
-    	{    		
-    		imagePixels[i] = (short[]) stack.getProcessor(i + 1).getPixels();    		
+    	{       		
+    		short[] slicePixels = (short[]) stack.getProcessor(i + 1).getPixels();    		
+    		System.arraycopy(slicePixels, 0, imagePixels, i * sliceSize, sliceSize);
     	}
     	
-    	//Threshold from 0 to 1
-    	short threshold = (short)(2.0 * (_opacity - 0.5) * 5000);   	
-    	    	 	
+    	short threshold = (short)(2.0 * (_opacity - 0.5) * 5000);   	    	    	 	
     	double[] coeffs = img.getCalibration().getCoefficients();
     	double a = coeffs[1];
     	double b = coeffs[0];
@@ -442,18 +444,14 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	
     	System.out.println("Thresholding with raw " + threshold);    	
     	
-    	for(int i = 0; i < numSlices; i++)
-    	{
-    		short[] slice = imagePixels[i];
-    		for(int j = 0; j < pixelsPerSlice; j++)
-    		{    			 			
-    			short val = slice[j];
-    			
-        		if(val > threshold)
-        			segStack[i * pixelsPerSlice + j] = 0;
-        		else
-        			segStack[i * pixelsPerSlice + j] = Short.MIN_VALUE; 
-    		}
+    	for(int i = 0; i < numSlices * pixelsPerSlice; i++)
+    	{    		    			 			
+			short val = imagePixels[i];
+			
+    		if(val > threshold)
+    			segStack[i] = 1.0f;
+    		else
+    			segStack[i] = 0.0f;    		
     	}
     	
     	img.updateAndDraw();

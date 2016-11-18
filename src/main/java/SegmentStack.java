@@ -7,5 +7,5 @@ class SegmentStack
 	int width;
 	int height;
 	int depth;
-	short[] _stack;
+	float[] stack;
 }
