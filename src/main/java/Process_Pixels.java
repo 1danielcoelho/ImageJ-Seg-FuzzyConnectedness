@@ -6,21 +6,14 @@ import java.awt.GridBagLayout;
 import java.awt.Panel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowEvent;
-import java.awt.image.DirectColorModel;
-import java.io.CharArrayWriter;
-import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -44,169 +37,19 @@ import ij.gui.ImageRoi;
 import ij.gui.NewImage;
 import ij.gui.Overlay;
 import ij.gui.PointRoi;
-import ij.gui.Roi;
 import ij.measure.Calibration;
-import ij.plugin.DICOM;
 import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
-import ij.util.DicomTools;
 
-public class Process_Pixels extends PlugInFrame implements ActionListener, MouseListener, ImageListener
+public class Process_Pixels extends PlugInFrame implements MouseListener, ImageListener
 {
+	private static final long serialVersionUID = 1L;
 	private Panel panel;
-	private int previousID;
 	private static Frame instance;
 	private boolean _pickingSeeds = false;
 	private float _opacity = 0.5f;
 	
 	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();	
-	
-	class Runner extends Thread 
-	{ 
-		private String command;
-		private ImagePlus imp;
-	
-		Runner(String command, ImagePlus imp) 
-		{
-			super(command);
-			this.command = command;
-			this.imp = imp;
-			setPriority(Math.max(getPriority()-2, MIN_PRIORITY));
-			start();
-		}
-	
-		public void run() 
-		{
-			try 
-			{
-				runCommand(command, imp);
-			}
-			catch(OutOfMemoryError e) 
-			{
-				IJ.outOfMemory(command);
-				if (imp!=null) imp.unlock();
-			}
-			catch(Exception e) 
-			{
-				CharArrayWriter caw = new CharArrayWriter();
-				PrintWriter pw = new PrintWriter(caw);
-				e.printStackTrace(pw);
-				IJ.log(caw.toString());
-				IJ.showStatus("");
-				if (imp!=null) imp.unlock();
-			}
-		}
-	
-		void runCommand(String command, ImagePlus imp) 
-		{
-	    	//byte[] pixels = (byte[])ip.getPixels();
-	    	//int width = ip.getWidth();
-	    	//Rectangle r = ip.getRoi();
-	    	//int offset, i;
-	    	//for (int y=r.y; y<(r.y+r.height); y++) {
-	    	//offset = y*width;
-	    	//for (int x=r.x; x<(r.x+r.width); x++) {
-	    	//i = offset + x;
-	    	//pixels[i] = (byte)(255-pixels[i]);
-	    	//}
-	    	//}
-	    	
-	    	/*
-	    	 *  If we cast a byte variable to another type we have to make sure that the sign bit is eliminated. This can be done using a binary AND:int pix = 0xff & pixels[i];
-	    	 * 
-	    	 */
-	    	
-	    	//drawDot
-	    	
-	        // Here is the action    	 
-	    	//int channels = ip.getNChannels();
-	    	//boolean gray = ip.isGrayscale();
-			
-			ImageProcessor ip = imp.getProcessor();
-			IJ.showStatus(command + "...");			
-			long startTime = System.currentTimeMillis();
-			Roi roi = imp.getRoi();
-			
-			if (command.startsWith("Zoom")||command.startsWith("Macro")||command.equals("Threshold"))
-			{
-				roi = null; ip.resetRoi();
-			}
-			
-			ImageProcessor mask = roi!=null? roi.getMask() : null;
-			
-			if (command.equals("Reset"))
-				ip.reset();
-			else if (command.equals("Flip"))
-				ip.flipVertical();
-			else if (command.equals("Invert"))
-				ip.invert();
-			else if (command.equals("Lighten")) {
-				if (imp.isInvertedLut())
-					ip.multiply(0.9);
-				else
-					ip.multiply(1.1);
-			}
-			else if (command.equals("Darken")) {
-				if (imp.isInvertedLut())
-					ip.multiply(1.1);
-				else
-					ip.multiply(0.9);
-			}
-			else if (command.equals("Rotate"))
-				ip.rotate(30);
-			else if (command.equals("Zoom In"))
-				ip.scale(1.2, 1.2);
-			else if (command.equals("Zoom Out"))
-				ip.scale(.8, .8);
-			else if (command.equals("Threshold"))
-				ip.autoThreshold();
-			else if (command.equals("Smooth"))
-				ip.smooth();
-			else if (command.equals("Sharpen"))
-				ip.sharpen();
-			else if (command.equals("Find Edges"))
-				ip.findEdges();
-			else if (command.equals("Add Noise"))
-				ip.noise(20);
-			else if (command.equals("Reduce Noise"))
-				ip.medianFilter();
-			
-			if (mask!=null)
-				ip.reset(mask);
-			
-			imp.updateAndDraw();
-			imp.unlock();
-			IJ.showStatus((System.currentTimeMillis()-startTime)+" milliseconds");
-		}	
-	}
-	
-	class Point3D
-	{
-		@Override
-		public String toString() {
-			return "Point3D [x=" + x + ", y=" + y + ", z=" + z + "]";
-		}
-
-		int x;
-		int y;
-		int z;
-		
-		Point3D(int x, int y, int z)
-		{
-			this.x = x; this.y = y; this.z = z;
-		}
-	}
-	
-	class SegmentStack
-	{
-		private String _refImageTitle;
-		private ArrayList<Point3D> _seeds = new ArrayList<Point3D>();
-		
-		int width;
-		int height;
-		int depth;
-		short[] _stack;
-	}
 	
     public Process_Pixels() 
     {
@@ -267,7 +110,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		JLabel thresholdLabel = new JLabel("Object threshold");
 		c.gridx = 0;
 		c.gridy = 0;	
-		c.fill = c.NONE;
+		c.fill = GridBagConstraints.NONE;
 		panel.add(thresholdLabel, c);		
 		
 		final JSlider objThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
@@ -424,7 +267,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		c.gridheight = 1;
 		c.gridx = 0;
 		c.gridy = 6;
-		c.fill = c.BOTH;
+		c.fill = GridBagConstraints.BOTH;
 		panel.add(bottomPanel, c);
 		
 		//Add the main parameter panel to our window
@@ -512,9 +355,9 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	
     	//Paint seeds full white
     	Overlay overlay = new Overlay();    	
-    	for(int i = 0; i < segStack._seeds.size(); i++)
+    	for(int i = 0; i < segStack.seeds.size(); i++)
     	{
-    		Point3D seed = segStack._seeds.get(i);    		
+    		Point3D seed = segStack.seeds.get(i);    		
     		
     		if(seed.z != currIndex) continue;
     		
@@ -540,7 +383,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     		return;
     	
     	SegmentStack seg = _imageSegmentMap.get(img); 
-    	seg._seeds.clear();
+    	seg.seeds.clear();
     	
     	img.updateAndDraw();
     }
@@ -616,36 +459,6 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
     	img.updateAndDraw();
     }
     
-	public void actionPerformed(ActionEvent e) 
-	{
-		ImagePlus imp = WindowManager.getCurrentImage();		
-		
-		if (imp==null) 
-		{
-			IJ.beep();
-			IJ.showStatus("No image");
-			previousID = 0;
-			return;
-		}
-		
-		if (!imp.lock())
-		{
-			previousID = 0; 
-			return;
-		}
-		
-		int id = imp.getID();
-		if (id!=previousID)
-			imp.getProcessor().snapshot();
-		previousID = id;
-		
-		String label = e.getActionCommand();
-		if (label==null)
-			return;
-		
-		//new Runner(label, imp);
-	}
-    
 	public void processWindowEvent(WindowEvent e) 
 	{
 		super.processWindowEvent(e);
@@ -679,32 +492,25 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 			System.out.println("Value: " + finalvalue);
 			
 			SegmentStack seg = _imageSegmentMap.get(img);			
-			seg._seeds.add(newPt);			
+			seg.seeds.add(newPt);			
 			
 			img.updateAndDraw();			
 		}		
 	}
-
 	public void mouseClicked(MouseEvent e) {}
 	public void mouseReleased(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
-
-	@Override
 	public void imageOpened(ImagePlus imp) 
 	{	
 		updateSegmentDictionary();
 		
 		drawOverlay(imp);
 	}
-
-	@Override
 	public void imageClosed(ImagePlus imp) 
 	{	
 		updateSegmentDictionary();
 	}
-
-	@Override
 	public void imageUpdated(ImagePlus imp) 
 	{		
 		//When we first open an image, IJ itself setting its title triggers imageUpdated.
@@ -727,7 +533,7 @@ public class Process_Pixels extends PlugInFrame implements ActionListener, Mouse
 		new ImageJ();
 
 		// open the Clown sample
-		ImagePlus image = IJ.openImage("http://a-z-animals.com/media/animals/images/original/starfish2.jpg");
+		ImagePlus image = IJ.openImage("C:\\Users\\Daniel\\Dropbox\\DICOM series\\ct_head_ex\\CTHd058");
 		image.show();
 
 		// run the plugin
