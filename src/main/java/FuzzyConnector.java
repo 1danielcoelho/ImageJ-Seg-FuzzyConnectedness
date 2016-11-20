@@ -223,6 +223,7 @@ public class FuzzyConnector
 		
 		while(m_dial.m_size > 0)
 		{
+			System.out.println("New pass");
 			int c = m_dial.Pop();
 			
 			int[] neighbors = getNeighbors(c);
@@ -233,6 +234,7 @@ public class FuzzyConnector
 					continue;
 				
 				float aff_c_e = affinity(c, e);
+				System.out.println("Affinity calculated as " + aff_c_e);
 				
 				if(aff_c_e < m_threshold) 
 					continue;
@@ -242,7 +244,7 @@ public class FuzzyConnector
 				{
 					m_conScene[e] = f_min;
 					
-					System.out.println("Assigning " + f_min);
+					System.out.println("Assigning " + f_min + " to " + e);
 					
 					if(m_dial.Contains(e))
 						m_dial.Update(e, (int)(DialCache.MaxIndex * f_min + 0.5f));
@@ -252,6 +254,7 @@ public class FuzzyConnector
 			}
 		}
 		
+		System.out.println("Done");
 		return m_conScene;
 	}
 }

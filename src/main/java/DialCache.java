@@ -36,6 +36,8 @@ public class DialCache
 	 */
 	public void Push(int spelIndex, int affinity)
 	{
+		System.out.println("Pushed " + spelIndex + " with affinity " + affinity + ". Num spels in Q: " + (m_size + 1));
+		
 		//We also use m_pointerArray to keep track of which spels we visited
 		if(m_pointerArray.containsKey(spelIndex))
 			return;
@@ -46,9 +48,12 @@ public class DialCache
 		m_arr.get(affinity).add(spelIndex);		
 		
 		if(affinity > m_largestAffinity)
+		{
+			System.out.println("Largest affinity is now " + affinity);
 			m_largestAffinity = affinity;
+		}			
 		
-		m_size++;
+		m_size++;		
 	}
 	
 	/**
@@ -57,16 +62,19 @@ public class DialCache
 	 */
 	public int Pop()
 	{
+		System.out.println("Going to pop affinity " + m_largestAffinity);
+		
 		ArrayList<Integer> list = m_arr.get(m_largestAffinity);
 		
 		//FIFO
 		int result = list.remove(0); 
-				
-		if(result == m_largestAffinity && list.size() == 0)
-			UpdateLargestIndex();
-		
 		m_size--;
+				
+		System.out.println("Popped " + result + ". Num spels in Q: " + m_size);
 		
+		if(list.size() == 0)
+			UpdateLargestIndex();		
+				
 		return result;		
 	}
 	
@@ -86,13 +94,21 @@ public class DialCache
 	 * @param newAffinity new 16-bit unsigned affinity value
 	 */
 	public void Update(int spelIndex, int newAffinity)
-	{
+	{		
 		//Update entry in pointer array
 		int oldAffinity = m_pointerArray.put(spelIndex, newAffinity);		
+
+		System.out.println("++Updated " + spelIndex + " from " + oldAffinity + " to " + newAffinity);
 		
 		//Update entry in Dial array
 		ArrayList<Integer> oldList = m_arr.get(oldAffinity);
-		oldList.remove((Object)spelIndex);
+		oldList.remove((Object)spelIndex);			
+		
+		//If we left the largest affinity bucket and its now empty, we update m_largestAffinity to the
+		//newAffinity. We only ever update an affinity if its higher, so this is bound to be better than
+		//the previous m_largestAffinity
+		if(oldAffinity == m_largestAffinity && oldList.size() == 0)
+			m_largestAffinity = newAffinity;
 		
 		ArrayList<Integer> newList = m_arr.get(newAffinity);		
 		if(newList == null)
@@ -106,18 +122,20 @@ public class DialCache
 	 * and updates m_largestIndex to it
 	 */
 	private void UpdateLargestIndex()
-	{
-		for(int i = 0; i >= 0; i--)
+	{		
+		for(int i = m_largestAffinity; i >= 0; i--)
 		{
 			ArrayList<Integer> list = m_arr.get(i);
 			
-			if(list != null && list.size() != 0)
+			if(list.size() != 0)
 			{
+				System.out.println("Updating largest index to " + i);				
 				m_largestAffinity = i;
 				return;
 			}				
 		}		
 		
+		System.out.println("Updating largest index to 0");
 		m_largestAffinity = 0;
 	}
 }

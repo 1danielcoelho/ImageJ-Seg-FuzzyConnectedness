@@ -369,9 +369,9 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	}	
     	
 		ImageRoi roy = new ImageRoi(0, 0, ip);		
-		//roy.setZeroTransparent(true);			
+		roy.setZeroTransparent(true);			
 		//roy.setOpacity(_opacity);
-		roy.setOpacity(0.5);
+		roy.setOpacity(0.8);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			
@@ -412,7 +412,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		return;
     	   	
     	SegmentStack seg = _imageSegmentMap.get(img);
-    	seg.stack = FuzzyConnector.run(img, seg, 0.5f);
+    	seg.stack = FuzzyConnector.run(img, seg, 0.0f);
     	
     	img.updateAndDraw();
     }
