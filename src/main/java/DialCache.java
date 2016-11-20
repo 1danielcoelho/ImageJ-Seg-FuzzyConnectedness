@@ -1,14 +1,29 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 
+/**
+ * Dial's queue for storing 16-bit unsigned affinity values tied to 32-bit signed spel indices.
+ * Internally keeps a secondary int, int dictionary to make fetching/updating the affinity of spels O(1)
+ * @author Daniel
+ *
+ */
 public class DialCache 
 {
-	private ArrayList<ArrayList<Integer>> m_arr;	
+	//Highest possible value for the dial cache (here: maximum 16-bit unsigned value)
+	public static final int MaxIndex = 65535;
+	
+	private ArrayList<ArrayList<Integer>> m_arr;
+	private HashMap<Integer, Integer> m_pointerArray;
+	
 	private int m_largestIndex;	
+	public int m_size;
 	
 	public DialCache()
 	{
-		m_arr = new ArrayList<ArrayList<Integer>>(65536);	
-		m_largestIndex = 0;			
+		m_arr = new ArrayList<ArrayList<Integer>>(MaxIndex + 1);
+		m_pointerArray = new HashMap<Integer, Integer>();		
+		m_largestIndex = 0;		
+		m_size = 0;
 	}
 	
 	/**
@@ -18,9 +33,16 @@ public class DialCache
 	 */
 	public void Push(int spelIndex, int affinity)
 	{
+		//We also use m_pointerArray to keep track of which spels we visited
+		if(m_pointerArray.containsKey(spelIndex))
+			return;
+		
+		m_pointerArray.put(spelIndex, affinity);
+		
 		//Get list of spels that also have this affinity to o
-		ArrayList<Integer> list = m_arr.get(0xFFFF & affinity);
+		ArrayList<Integer> list = m_arr.get(affinity);
 
+		//TODO: Do I have to push the new list back into m_arr?
 		if(list == null)
 			list = new ArrayList<Integer>();
 		
@@ -28,20 +50,64 @@ public class DialCache
 		
 		if(spelIndex > m_largestIndex)
 			m_largestIndex = spelIndex;
+		
+		m_size++;
 	}
 	
+	/**
+	 * Returns and removes the spel with the highest affinity from the Dial cache
+	 * @return spel that has the highest 16-bit unsigned affinity value
+	 */
 	public int Pop()
 	{
 		ArrayList<Integer> list = m_arr.get(m_largestIndex);
 		
-		int result = list.remove(0);
-		
+		//FIFO
+		int result = list.remove(0); 
+				
 		if(result == m_largestIndex && list.size() == 0)
 			UpdateLargestIndex();
 		
-		return result;
+		m_size--;
+		
+		return result;		
 	}
 	
+	/**
+	 * Returns whether the Dial cache already holds spelIndex somewhere
+	 * @param spelIndex Index of the spel to update
+	 * @return whether the Dial cache already holds spelIndex somewhere
+	 */
+	public boolean Contains(int spelIndex)
+	{
+		return m_pointerArray.containsKey(spelIndex);
+	}
+	
+	/**
+	 * Updates the position of spelIndex within the Dial cache
+	 * @param spelIndex Index of the spel to update
+	 * @param newAffinity new 16-bit unsigned affinity value
+	 */
+	public void Update(int spelIndex, int newAffinity)
+	{
+		//Update entry in pointer array
+		int oldAffinity = m_pointerArray.put(spelIndex, newAffinity);		
+		
+		//Update entry in Dial array
+		ArrayList<Integer> oldList = m_arr.get(oldAffinity);
+		oldList.remove((Object)spelIndex);
+		
+		ArrayList<Integer> newList = m_arr.get(newAffinity);		
+		if(newList == null)
+			newList = new ArrayList<Integer>();
+		
+		newList.add(spelIndex);
+	}
+	
+	/**
+	 * Looks for the largest affinity value we have assigned spels to,
+	 * and updates m_largestIndex to it
+	 */
 	private void UpdateLargestIndex()
 	{
 		for(int i = 0; i >= 0; i--)

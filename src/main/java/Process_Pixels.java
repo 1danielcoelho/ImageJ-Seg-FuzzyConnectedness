@@ -320,11 +320,10 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		img.getCanvas().addMouseListener(this);
     		
     		if(!_imageSegmentMap.containsKey(img))
-    		{
-    			SegmentStack seg = new SegmentStack();
-    			
+    		{    			
     			ImageStack stack = img.getStack();
     			
+    			SegmentStack seg = new SegmentStack();
     			seg.width = stack.getWidth();
     			seg.height = stack.getHeight();
     			seg.depth = stack.getSize();    			    			        			
@@ -407,52 +406,13 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     
     public void runSegmentation()
     {    	    	
-    	ImagePlus img = WindowManager.getCurrentImage();
+    	ImagePlus img = WindowManager.getCurrentImage();    	    	
     	    	
-    	System.out.println("Channels: " + img.getNChannels() + ", Bit depth: " + img.getBitDepth());
-    	    	
-    	if(!_imageSegmentMap.containsKey(img) || img.getNChannels() > 1)
+    	if(!_imageSegmentMap.containsKey(img) || img.getNChannels() > 1 || img.getBitDepth() != 16)
     		return;
-    	
-    	SegmentStack seg = _imageSegmentMap.get(img); 
-    	float[] segStack = new float[seg.width * seg.height * seg.depth];
-    	seg.stack = segStack;    	    	
-    	
-    	ImageStack stack = img.getStack();
-    	    	
-    	int numSlices = stack.getSize();
-    	int pixelsPerSlice = stack.getWidth() * stack.getHeight(); 
-    	short[] imagePixels = new short[seg.width * seg.height * seg.depth];
-    	
-    	//Grab references to the pixels of the entire stack
-    	int sliceSize = seg.width * seg.height;
-    	for(int i = 0; i < numSlices; i++)
-    	{       		
-    		short[] slicePixels = (short[]) stack.getProcessor(i + 1).getPixels();    		
-    		System.arraycopy(slicePixels, 0, imagePixels, i * sliceSize, sliceSize);
-    	}
-    	
-    	short threshold = (short)(2.0 * (_opacity - 0.5) * 5000);   	    	    	 	
-    	double[] coeffs = img.getCalibration().getCoefficients();
-    	double a = coeffs[1];
-    	double b = coeffs[0];
-    	
-    	System.out.println("Thresholding with " + threshold);  
-    	
-    	//Convert the threshold to the same raw space that the image is in
-    	threshold = (short)((threshold - b) / a);
-    	
-    	System.out.println("Thresholding with raw " + threshold);    	
-    	
-    	for(int i = 0; i < numSlices * pixelsPerSlice; i++)
-    	{    		    			 			
-			short val = imagePixels[i];
-			
-    		if(val > threshold)
-    			segStack[i] = 1.0f;
-    		else
-    			segStack[i] = 0.0f;    		
-    	}
+    	   	
+    	SegmentStack seg = _imageSegmentMap.get(img);
+    	seg.stack = FuzzyConnector.run(img, seg, 0.5f);
     	
     	img.updateAndDraw();
     }
