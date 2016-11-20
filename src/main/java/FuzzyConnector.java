@@ -131,6 +131,8 @@ public class FuzzyConnector
 			}
 		}			
 		
+		todo: Still crashes ocasionally. I selected two seeds in the ventricles, ran, then three seeds on white matter and crash
+		
 		float[] ave_meanSigma = welford(aves);
 		float[] reldiff_meanSigma = welford(reldiffs);	
 		
