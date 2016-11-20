@@ -35,9 +35,7 @@ public class DialCache
 	 * @param affinity 16-bit unsigned short (if we could do that) representing mapped affinity from [0,1]
 	 */
 	public void Push(int spelIndex, int affinity)
-	{
-		System.out.println("Pushed " + spelIndex + " with affinity " + affinity + ". Num spels in Q: " + (m_size + 1));
-		
+	{		
 		//We also use m_pointerArray to keep track of which spels we visited
 		if(m_pointerArray.containsKey(spelIndex))
 			return;
@@ -49,7 +47,6 @@ public class DialCache
 		
 		if(affinity > m_largestAffinity)
 		{
-			System.out.println("Largest affinity is now " + affinity);
 			m_largestAffinity = affinity;
 		}			
 		
@@ -62,15 +59,11 @@ public class DialCache
 	 */
 	public int Pop()
 	{
-		System.out.println("Going to pop affinity " + m_largestAffinity);
-		
 		ArrayList<Integer> list = m_arr.get(m_largestAffinity);
 		
 		//FIFO
 		int result = list.remove(0); 
-		m_size--;
-				
-		System.out.println("Popped " + result + ". Num spels in Q: " + m_size);
+		m_size--;				
 		
 		if(list.size() == 0)
 			UpdateLargestIndex();		
@@ -97,8 +90,6 @@ public class DialCache
 	{		
 		//Update entry in pointer array
 		int oldAffinity = m_pointerArray.put(spelIndex, newAffinity);		
-
-		System.out.println("++Updated " + spelIndex + " from " + oldAffinity + " to " + newAffinity);
 		
 		//Update entry in Dial array
 		ArrayList<Integer> oldList = m_arr.get(oldAffinity);
@@ -128,14 +119,12 @@ public class DialCache
 			ArrayList<Integer> list = m_arr.get(i);
 			
 			if(list.size() != 0)
-			{
-				System.out.println("Updating largest index to " + i);				
+			{		
 				m_largestAffinity = i;
 				return;
 			}				
 		}		
 		
-		System.out.println("Updating largest index to 0");
 		m_largestAffinity = 0;
 	}
 }

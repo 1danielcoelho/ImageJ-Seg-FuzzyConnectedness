@@ -409,11 +409,20 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	ImagePlus img = WindowManager.getCurrentImage();    	    	
     	    	
     	if(!_imageSegmentMap.containsKey(img) || img.getNChannels() > 1 || img.getBitDepth() != 16)
+    	{
+    		IJ.showStatus("Unsupported image format!");
     		return;
+    	}    		
     	   	
     	SegmentStack seg = _imageSegmentMap.get(img);
-    	seg.stack = FuzzyConnector.run(img, seg, 0.0f);
     	
+    	if(seg.seeds.size() == 0)
+    	{
+    		IJ.showStatus("Select one or more seeds first!");
+    		return;
+    	}
+    	
+    	seg.stack = FuzzyConnector.run(img, seg, 0.0f);    	
     	img.updateAndDraw();
     }
     
@@ -446,9 +455,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 			double[] coeffs = b.getCoefficients();
 			
 			short finalvalue = (short)(a[0] * coeffs[1] + coeffs[0]);
-			
-			System.out.println("Value: " + finalvalue);
-			
+						
 			SegmentStack seg = _imageSegmentMap.get(img);			
 			seg.seeds.add(newPt);			
 			
@@ -491,7 +498,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 		new ImageJ();
 
 		// open the Clown sample
-		ImagePlus image = IJ.openImage("C:\\Users\\Daniel\\Dropbox\\DICOM series\\ct_head_ex\\CTHd058");
+		ImagePlus image = IJ.openImage("C:\\Users\\Daniel\\Dropbox\\DICOM series\\Darcicleia\\D10A2878\\51B6047A");
 		image.show();
 
 		// run the plugin

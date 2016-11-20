@@ -92,7 +92,6 @@ public class FuzzyConnector
 						continue;
 					
 					spels.add(k);
-					System.out.println(k);
 				}
 			}					
 		}
@@ -130,6 +129,11 @@ public class FuzzyConnector
 		
 		m_mean_reldiff = reldiff_meanSigma[0];
 		m_sigma_reldiff = reldiff_meanSigma[1];
+		
+		System.out.println("ave mean: " + m_mean_ave);
+		System.out.println("ave sigma: " + m_sigma_ave);
+		System.out.println("reldiff mean: " + m_mean_reldiff);
+		System.out.println("reldiff sigma: " + m_sigma_reldiff);		
 	}
 	
 	/**
@@ -223,7 +227,6 @@ public class FuzzyConnector
 		
 		while(m_dial.m_size > 0)
 		{
-			System.out.println("New pass");
 			int c = m_dial.Pop();
 			
 			int[] neighbors = getNeighbors(c);
@@ -234,7 +237,6 @@ public class FuzzyConnector
 					continue;
 				
 				float aff_c_e = affinity(c, e);
-				System.out.println("Affinity calculated as " + aff_c_e);
 				
 				if(aff_c_e < m_threshold) 
 					continue;
@@ -243,9 +245,7 @@ public class FuzzyConnector
 				if(f_min > m_conScene[e])
 				{
 					m_conScene[e] = f_min;
-					
-					System.out.println("Assigning " + f_min + " to " + e);
-					
+										
 					if(m_dial.Contains(e))
 						m_dial.Update(e, (int)(DialCache.MaxIndex * f_min + 0.5f));
 					else
