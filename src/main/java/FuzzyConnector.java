@@ -74,35 +74,49 @@ public class FuzzyConnector
 	{
 		//TODO: handle case where seed is on the edge shell cube of the volume
 		
-		//Get all neighbors around a seed in a 3x3 cube (including the seed itself)
 		//Will never add duplicates, since we use HashSets
-		HashSet<Integer> neighbors = new HashSet<Integer>();		
+		HashSet<Integer> spels = new HashSet<Integer>();		
 		for(int i : m_seeds)
 		{			
-			for(int x = -1; x <= 1; x++)
+			int[] neighbors = getNeighbors(i);	
+			for(int j : neighbors)
 			{
-				for(int y = -1; y <= 1; y++)
+				if(j == -1)
+					continue;
+				
+				int[] neighborsNeighbors = getNeighbors(j);
+				
+				for(int k : neighborsNeighbors)
 				{
-					for(int z = -1; z <= 1; z++)
-					{					
-						neighbors.add(i + x * 1 + y * m_width + z * m_pixelsPerSlice);
-					}
+					if(k == -1)
+						continue;
+					
+					spels.add(k);
+					System.out.println(k);
 				}
-			}
+			}					
 		}
 		
 		//Push all combinations of ave and reldiff to the arrays
-		int numEls = neighbors.size();		
-		float[] aves = new float[numEls * (numEls - 1)];
-		float[] reldiffs = new float[numEls * (numEls - 1)];
-		int count = 0;
+		int numSpels = spels.size();		
 		
-		for(int i = 0; i < numEls - 1; i++)
+		//Weird java stuff to get all spels from the hasmap into an int array
+		Integer[] temp = spels.toArray(new Integer[numSpels]);
+		int[] spelsArray = new int[temp.length];
+		for(int i = 0; i < numSpels; i++)
+			spelsArray[i] = temp[i];
+		
+		int numCombinations = (numSpels * (numSpels - 1)) / 2;
+		float[] aves = new float[numCombinations];
+		float[] reldiffs = new float[numCombinations];
+		
+		int count = 0;		
+		for(int i = 0; i < numSpels - 1; i++)
 		{
-			for(int j = i+1; j < numEls; j++)
+			for(int j = i+1; j < numSpels; j++)
 			{
-				aves[count] = ave(i, j);
-				reldiffs[count] = reldiff(i, j);
+				aves[count] = ave(spelsArray[i], spelsArray[j]);
+				reldiffs[count] = reldiff(spelsArray[i], spelsArray[j]);
 				
 				count++;
 			}
@@ -169,7 +183,7 @@ public class FuzzyConnector
 	
 	private static float ave(int c, int d)
 	{		
-		return 0.5f * (float)m_imagePixels[c] * (float)m_imagePixels[d];
+		return 0.5f * ((float)m_imagePixels[c] + (float)m_imagePixels[d]);
 	}
 	
 	private static float reldiff(int c, int d)
@@ -183,8 +197,8 @@ public class FuzzyConnector
 	private static int[] getNeighbors(int c)
 	{
 		int z = c / m_pixelsPerSlice;
-		int y = (z % m_pixelsPerSlice) / m_width;
-		int x = (z % m_pixelsPerSlice) % m_width; 
+		int y = (c % m_pixelsPerSlice) / m_width;
+		int x = (c % m_pixelsPerSlice) % m_width; 
 		
 		int[] result = new int[6];
 		result[0] = x < m_width-1 ? 			c + 1 : -1;
@@ -227,6 +241,8 @@ public class FuzzyConnector
 				if(f_min > m_conScene[e])
 				{
 					m_conScene[e] = f_min;
+					
+					System.out.println("Assigning " + f_min);
 					
 					if(m_dial.Contains(e))
 						m_dial.Update(e, (int)(DialCache.MaxIndex * f_min + 0.5f));
