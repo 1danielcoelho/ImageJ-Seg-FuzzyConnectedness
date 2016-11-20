@@ -7,6 +7,7 @@ import java.util.HashSet;
 
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.measure.Calibration;
 
 public class FuzzyConnector 
 {
@@ -48,6 +49,17 @@ public class FuzzyConnector
     		short[] slicePixels = (short[]) stack.getProcessor(i + 1).getPixels();
     		System.arraycopy(slicePixels, 0, m_imagePixels, i * m_pixelsPerSlice, m_pixelsPerSlice);
     	}    	
+
+		Calibration calib = img.getCalibration();			
+		double[] coeffs = calib.getCoefficients();
+		double a = coeffs[1];
+		double b = coeffs[0];
+		    	
+		System.out.println("Calibrating image range...");
+    	for(int i = 0; i < m_depth * m_pixelsPerSlice; i++)
+    	{
+    		m_imagePixels[i] = (short)(m_imagePixels[i] * a + b);
+    	}
 		
     	m_seeds = new int[seg.seeds.size()];
     	for(int i = 0; i < seg.seeds.size(); i++)
@@ -71,13 +83,11 @@ public class FuzzyConnector
 	 * all combinations of neighbors around all seeds (3x3x3 centered on each)
 	 */
 	private static void calculateMeansAndSigmas()
-	{
-		//TODO: handle case where seed is on the edge shell cube of the volume
-		
+	{		
 		//Will never add duplicates, since we use HashSets
 		HashSet<Integer> spels = new HashSet<Integer>();		
 		for(int i : m_seeds)
-		{			
+		{						
 			int[] neighbors = getNeighbors(i);	
 			for(int j : neighbors)
 			{
@@ -119,7 +129,7 @@ public class FuzzyConnector
 				
 				count++;
 			}
-		}
+		}			
 		
 		float[] ave_meanSigma = welford(aves);
 		float[] reldiff_meanSigma = welford(reldiffs);	

@@ -455,6 +455,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 			double[] coeffs = b.getCoefficients();
 			
 			short finalvalue = (short)(a[0] * coeffs[1] + coeffs[0]);
+			System.out.println("New seed at: " + x + ", "+ y + ", " + z + ", raw value: " + a[0] + ", calibrated: " + finalvalue);
 						
 			SegmentStack seg = _imageSegmentMap.get(img);			
 			seg.seeds.add(newPt);			
