@@ -39,14 +39,14 @@ public class FuzzyConnector
 		
 		m_pixelsPerSlice = m_width * m_height;
 		
-    	short[] imagePixels = new short[m_pixelsPerSlice * m_depth];
+    	m_imagePixels = new short[m_pixelsPerSlice * m_depth];
     	m_conScene = seg.stack;
     	    	
     	//Grab references to the pixels of the entire stack
     	for(int i = 0; i < m_depth; i++)
     	{    		
     		short[] slicePixels = (short[]) stack.getProcessor(i + 1).getPixels();
-    		System.arraycopy(slicePixels, 0, imagePixels, i * m_pixelsPerSlice, m_pixelsPerSlice);
+    		System.arraycopy(slicePixels, 0, m_imagePixels, i * m_pixelsPerSlice, m_pixelsPerSlice);
     	}    	
 		
     	m_seeds = new int[seg.seeds.size()];
@@ -182,13 +182,17 @@ public class FuzzyConnector
 	
 	private static int[] getNeighbors(int c)
 	{
+		int z = c / m_pixelsPerSlice;
+		int y = (z % m_pixelsPerSlice) / m_width;
+		int x = (z % m_pixelsPerSlice) % m_width; 
+		
 		int[] result = new int[6];
-		result[0] = c - 1;
-		result[1] = c + 1;
-		result[2] = c + m_width;
-		result[3] = c - m_width;
-		result[4] = c + m_pixelsPerSlice;
-		result[5] = c + m_pixelsPerSlice;
+		result[0] = x < m_width-1 ? 			c + 1 : -1;
+		result[1] = x > 0 ? 					c - 1 : -1;
+		result[2] = y < m_height-1 ? 			c + m_width : -1;
+		result[3] = y > 0 ? 					c - m_width : -1;
+		result[4] = z < m_depth-1 ?			 	c + m_pixelsPerSlice : -1;
+		result[5] = z > 0 ? 					c - m_pixelsPerSlice : -1;
 		
 		return result;
 	}
@@ -210,6 +214,10 @@ public class FuzzyConnector
 			int[] neighbors = getNeighbors(c);
 			for(int e : neighbors)
 			{
+				//We get -1 when we are at an edge (e.g. on first row and want the neighbor on the row below)
+				if(e == -1) 
+					continue;
+				
 				float aff_c_e = affinity(c, e);
 				
 				if(aff_c_e < m_threshold) 
@@ -228,6 +236,6 @@ public class FuzzyConnector
 			}
 		}
 		
-		return null;
+		return m_conScene;
 	}
 }

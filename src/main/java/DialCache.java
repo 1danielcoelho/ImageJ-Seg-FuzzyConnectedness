@@ -15,14 +15,17 @@ public class DialCache
 	private ArrayList<ArrayList<Integer>> m_arr;
 	private HashMap<Integer, Integer> m_pointerArray;
 	
-	private int m_largestIndex;	
+	private int m_largestAffinity;	
 	public int m_size;
 	
 	public DialCache()
 	{
 		m_arr = new ArrayList<ArrayList<Integer>>(MaxIndex + 1);
+		for(int i = 0; i <= MaxIndex; i++)
+			m_arr.add(new ArrayList<Integer>());
+		
 		m_pointerArray = new HashMap<Integer, Integer>();		
-		m_largestIndex = 0;		
+		m_largestAffinity = 0;		
 		m_size = 0;
 	}
 	
@@ -39,17 +42,11 @@ public class DialCache
 		
 		m_pointerArray.put(spelIndex, affinity);
 		
-		//Get list of spels that also have this affinity to o
-		ArrayList<Integer> list = m_arr.get(affinity);
-
-		//TODO: Do I have to push the new list back into m_arr?
-		if(list == null)
-			list = new ArrayList<Integer>();
+		//Add spel to dial array
+		m_arr.get(affinity).add(spelIndex);		
 		
-		list.add(spelIndex);
-		
-		if(spelIndex > m_largestIndex)
-			m_largestIndex = spelIndex;
+		if(affinity > m_largestAffinity)
+			m_largestAffinity = affinity;
 		
 		m_size++;
 	}
@@ -60,12 +57,12 @@ public class DialCache
 	 */
 	public int Pop()
 	{
-		ArrayList<Integer> list = m_arr.get(m_largestIndex);
+		ArrayList<Integer> list = m_arr.get(m_largestAffinity);
 		
 		//FIFO
 		int result = list.remove(0); 
 				
-		if(result == m_largestIndex && list.size() == 0)
+		if(result == m_largestAffinity && list.size() == 0)
 			UpdateLargestIndex();
 		
 		m_size--;
@@ -116,11 +113,11 @@ public class DialCache
 			
 			if(list != null && list.size() != 0)
 			{
-				m_largestIndex = i;
+				m_largestAffinity = i;
 				return;
 			}				
 		}		
 		
-		m_largestIndex = 0;
+		m_largestAffinity = 0;
 	}
 }
