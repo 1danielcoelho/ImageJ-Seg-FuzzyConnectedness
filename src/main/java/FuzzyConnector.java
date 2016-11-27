@@ -1,5 +1,6 @@
 import java.util.HashSet;
 
+import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.measure.Calibration;
@@ -262,6 +263,7 @@ public class FuzzyConnector
 		}
 		
 		System.out.println("Done");
+		IJ.showStatus("Done!");
 		return m_conScene;
 	}
 }

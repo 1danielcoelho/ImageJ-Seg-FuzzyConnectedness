@@ -187,7 +187,9 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
 				AbstractButton abstractButton = (AbstractButton) e.getSource();
 		        _binarize = abstractButton.getModel().isSelected();
             	ImagePlus img = WindowManager.getCurrentImage();
-            	img.updateAndDraw();
+            	
+            	if(img != null)            		
+            		img.updateAndDraw();
 			}
 		});
 		c.gridx = 1;
@@ -211,7 +213,9 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
             {
             	_binaryThreshold = binaryThresholdSlider.getValue() / 100.0f;
             	ImagePlus img = WindowManager.getCurrentImage();
-            	img.updateAndDraw();
+            	
+            	if(img != null)            		
+            		img.updateAndDraw();
             }
         });
 		c.gridx = 1;
@@ -240,7 +244,9 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
             {
             	_opacity = segmentOpacitySlider.getValue() / 100.0f;
             	ImagePlus img = WindowManager.getCurrentImage();
-            	img.updateAndDraw();
+            	
+            	if(img != null)
+            		img.updateAndDraw();
             }
         });
 		c.gridx = 1;
@@ -360,7 +366,11 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
     }
     
     public void drawOverlay(ImagePlus imp)
-    {       			
+    {       		
+    	//No image opened
+    	if(imp == null)
+    		return;
+    	
     	SegmentStack segStack = _imageSegmentMap.get(imp);    	
 				
     	int currIndex = imp.getCurrentSlice() - 1;
@@ -424,6 +434,8 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
     public void clearSeeds()
     {
     	ImagePlus img = WindowManager.getCurrentImage();
+    	if(img == null)
+    		return;
     	
     	if(!_imageSegmentMap.containsKey(img))
     		return;
@@ -437,6 +449,8 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
     public void clearSegment()
     {
     	ImagePlus img = WindowManager.getCurrentImage();
+    	if(img == null)
+    		return;
     	
     	if(!_imageSegmentMap.containsKey(img))
     		return;
@@ -449,7 +463,9 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
     
     public void runSegmentation()
     {    	    	
-    	ImagePlus img = WindowManager.getCurrentImage();    	    	
+    	ImagePlus img = WindowManager.getCurrentImage();    	   
+    	if(img == null)
+    		return;
     	    	
     	if(!_imageSegmentMap.containsKey(img) || img.getNChannels() > 1 || img.getBitDepth() != 16)
     	{
@@ -481,6 +497,8 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
 		if(_pickingSeeds)
 		{							
 			ImagePlus img = WindowManager.getCurrentImage();
+			if(img == null)
+	    		return;
 			
 			int x = e.getX();
 			int y = e.getY();
@@ -542,8 +560,8 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
 		new ImageJ();
 
 		// open the Clown sample
-		ImagePlus image = IJ.openImage("C:\\Users\\Daniel\\Dropbox\\DICOM series\\Darcicleia\\D10A2878\\51B6047A");
-		image.show();
+		//ImagePlus image = IJ.openImage("C:\\Users\\Daniel\\Dropbox\\DICOM series\\Darcicleia\\D10A2878\\51B6047A");
+		//image.show();
 
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");		
