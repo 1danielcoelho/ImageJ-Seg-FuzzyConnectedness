@@ -13,10 +13,10 @@
 	</parent>
 
 	<groupId>sc.fiji</groupId>
-	<artifactId>Process_Pixels</artifactId>
+	<artifactId>Fuzzy_Connectedness</artifactId>
 	<version>0.1.0-SNAPSHOT</version>
 
-	<name>plugins/Process_Pixels.jar</name>
+	<name>plugins/Fuzzy_Connectedness.jar</name>
 	<description>A Maven project implementing an ImageJ 1.x plugin</description>
 
 	<developers>
@@ -36,7 +36,7 @@
 	</developers>
 
 	<properties>
-		<main-class>Process_Pixels</main-class>
+		<main-class>Fuzzy_Connectedness</main-class>
 	</properties>
 
 	<dependencies>

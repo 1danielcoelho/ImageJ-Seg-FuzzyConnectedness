@@ -43,7 +43,7 @@ import ij.plugin.frame.PlugInFrame;
 import ij.process.ImageProcessor;
 import ij.process.LUT;
 
-public class Process_Pixels extends PlugInFrame implements MouseListener, ImageListener
+public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, ImageListener
 {
 	private static final long serialVersionUID = 1L;
 	private Panel panel;
@@ -57,9 +57,9 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 	
 	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();	
 	
-    public Process_Pixels() 
+    public Fuzzy_Connectedness() 
     {
-		super("Process pixels");
+		super("Fuzzy Connectedness");
 		if (instance!=null) {
 			instance.toFront();
 			return;
@@ -533,7 +533,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 	public static void main(String[] args) 
 	{
 		// set the plugins.dir property to make the plugin appear in the Plugins menu
-		Class<?> clazz = Process_Pixels.class;
+		Class<?> clazz = Fuzzy_Connectedness.class;
 		String url = clazz.getResource("/" + clazz.getName().replace('.', '/') + ".class").toString();
 		String pluginsDir = url.substring("file:".length(), url.length() - clazz.getName().length() - ".class".length());
 		System.setProperty("plugins.dir", pluginsDir);
