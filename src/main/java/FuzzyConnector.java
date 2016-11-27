@@ -187,9 +187,7 @@ public class FuzzyConnector
 	}
 	
 	private static float affinity(int c, int d)
-	{		
-		//TODO: Handle negative image pixel values
-						
+	{								
 		float g_ave = gaussian(ave(c, d), m_mean_ave, m_sigma_ave);
 		float g_reldiff = gaussian(reldiff(c, d), m_mean_reldiff, m_sigma_reldiff);
 		
@@ -250,7 +248,10 @@ public class FuzzyConnector
 				float aff_c_e = affinity(c, e);
 				
 				if(aff_c_e < m_threshold) 
+				{
+					m_dial.Visit(e);
 					continue;
+				}						
 				
 				float f_min = Math.min(m_conScene[c], aff_c_e);
 				if(f_min > m_conScene[e])

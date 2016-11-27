@@ -47,7 +47,7 @@ public class DialCache
 		
 		if(affinity > m_largestAffinity)
 		{
-			m_largestAffinity = affinity;
+			m_largestAffinity = affinity;			
 		}			
 		
 		m_size++;		
@@ -82,6 +82,15 @@ public class DialCache
 	}
 	
 	/**
+	 * Marks a spel as visited, so that we can't push it into the Dial Cache ever again
+	 * @param spelIndex
+	 */
+	public void Visit(int spelIndex)
+	{
+		m_pointerArray.put(spelIndex, 0);
+	}
+	
+	/**
 	 * Updates the position of spelIndex within the Dial cache
 	 * @param spelIndex Index of the spel to update
 	 * @param newAffinity new 16-bit unsigned affinity value
@@ -102,9 +111,6 @@ public class DialCache
 			m_largestAffinity = newAffinity;
 		
 		ArrayList<Integer> newList = m_arr.get(newAffinity);		
-		if(newList == null)
-			newList = new ArrayList<Integer>();
-		
 		newList.add(spelIndex);
 	}
 	

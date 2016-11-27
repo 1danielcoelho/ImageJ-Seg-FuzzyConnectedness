@@ -49,6 +49,8 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 	private Panel panel;
 	private static Frame instance;
 	private boolean _pickingSeeds = false;
+	
+	private float _threshold = 0.5f;
 	private float _opacity = 0.5f;
 	private boolean _binarize = false;
 	private float _binaryThreshold = 0.5f;
@@ -120,6 +122,14 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 		final JSlider objThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
 		objThresholdSlider.setMajorTickSpacing(10);
 		objThresholdSlider.setPaintTicks(true);
+		objThresholdSlider.addChangeListener(new ChangeListener()
+		{
+            @Override
+            public void stateChanged(ChangeEvent e) 
+            {
+            	_threshold = objThresholdSlider.getValue() / 100.0f;
+            }
+        });
 		c.gridx = 1;
 		c.gridy = 0;
 		panel.add(objThresholdSlider, c);	
@@ -455,7 +465,7 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     		return;
     	}
     	
-    	seg.stack = FuzzyConnector.run(img, seg, 0.0f);    	
+    	seg.stack = FuzzyConnector.run(img, seg, _threshold);    	
     	img.updateAndDraw();
     }
     
