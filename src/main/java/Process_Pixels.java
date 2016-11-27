@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import javax.swing.AbstractButton;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
@@ -49,6 +50,8 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 	private static Frame instance;
 	private boolean _pickingSeeds = false;
 	private float _opacity = 0.5f;
+	private boolean _binarize = false;
+	private float _binaryThreshold = 0.5f;
 	
 	private HashMap<ImagePlus, SegmentStack> _imageSegmentMap = new HashMap<ImagePlus, SegmentStack>();	
 	
@@ -160,25 +163,23 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 		c.gridwidth = 1;
 		panel.add(seedsResetButton, c);
 		
-		JLabel outputFuzzyLabel = new JLabel("Output fuzzy image");
-		c.gridx = 0;
-		c.gridy = 2;
-		c.gridwidth = 1;
-		panel.add(outputFuzzyLabel, c);
-		
-		JCheckBox outputFuzzyCheckbox = new JCheckBox();
-		c.gridx = 1;
-		c.gridy = 2;
-		c.gridwidth = 2;
-		panel.add(outputFuzzyCheckbox, c);
-				
-		JLabel outputBinaryLabel = new JLabel("Output binary image");
+		JLabel outputBinaryLabel = new JLabel("Binarize image");
 		c.gridx = 0;
 		c.gridy = 3;
 		c.gridwidth = 1;
 		panel.add(outputBinaryLabel, c);		
 		
 		JCheckBox outputBinaryCheckbox = new JCheckBox();
+		outputBinaryCheckbox.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				AbstractButton abstractButton = (AbstractButton) e.getSource();
+		        _binarize = abstractButton.getModel().isSelected();
+            	ImagePlus img = WindowManager.getCurrentImage();
+            	img.updateAndDraw();
+			}
+		});
 		c.gridx = 1;
 		c.gridy = 3;		 
 		c.gridwidth = 2;
@@ -190,9 +191,19 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
 		c.gridwidth = 1;
 		panel.add(binaryThresholdLabel, c);				
 		
-		JSlider binaryThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
+		final JSlider binaryThresholdSlider = new JSlider(SwingConstants.HORIZONTAL, 0, 100, 50);
 		binaryThresholdSlider.setMajorTickSpacing(10);
 		binaryThresholdSlider.setPaintTicks(true);
+		binaryThresholdSlider.addChangeListener(new ChangeListener()
+		{
+            @Override
+            public void stateChanged(ChangeEvent e) 
+            {
+            	_binaryThreshold = binaryThresholdSlider.getValue() / 100.0f;
+            	ImagePlus img = WindowManager.getCurrentImage();
+            	img.updateAndDraw();
+            }
+        });
 		c.gridx = 1;
 		c.gridy = 4;
 		panel.add(binaryThresholdSlider, c);
@@ -356,6 +367,29 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	if(ip.isInvertedLut())
     		ip.invertLut();
     	
+    	byte[] red = new byte[256];
+    	byte[] green = new byte[256];
+    	byte[] blue = new byte[256];
+    	
+    	if(_binarize)
+    	{
+    		int binByte = (int)(_binaryThreshold * 255);
+    		
+        	for(int i = 0; i < 256; i++)
+        	{
+        		green[i] = (byte) (0xFF & (i < binByte ? 0 : 255));
+        	}
+    	}
+    	else
+    	{
+        	for(int i = 0; i < 256; i++)
+        	{
+        		green[i] = (byte) (0xFF & i);
+        	}
+    	}
+    	
+    	ip.setLut(new LUT(red, green, blue));
+    	
     	//Display seeds that are in this slice
     	Overlay overlay = new Overlay();    	
     	for(int i = 0; i < segStack.seeds.size(); i++)
@@ -369,9 +403,8 @@ public class Process_Pixels extends PlugInFrame implements MouseListener, ImageL
     	}	
     	
 		ImageRoi roy = new ImageRoi(0, 0, ip);		
-		roy.setZeroTransparent(true);			
-		//roy.setOpacity(_opacity);
-		roy.setOpacity(0.8);
+		roy.setZeroTransparent(true);	
+		roy.setOpacity(_opacity);
 		overlay.add(roy);
 				
 		imp.setOverlay(overlay);			

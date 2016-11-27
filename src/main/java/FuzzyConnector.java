@@ -41,6 +41,7 @@ public class FuzzyConnector
 		m_pixelsPerSlice = m_width * m_height;
 		
     	m_imagePixels = new short[m_pixelsPerSlice * m_depth];
+    	seg.stack = new float[m_pixelsPerSlice * m_depth];
     	m_conScene = seg.stack;
     	    	
     	//Grab references to the pixels of the entire stack
@@ -129,9 +130,7 @@ public class FuzzyConnector
 				
 				count++;
 			}
-		}			
-		
-		todo: Still crashes ocasionally. I selected two seeds in the ventricles, ran, then three seeds on white matter and crash
+		}	
 		
 		float[] ave_meanSigma = welford(aves);
 		float[] reldiff_meanSigma = welford(reldiffs);	
