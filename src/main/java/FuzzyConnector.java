@@ -262,8 +262,6 @@ public class FuzzyConnector
 			}
 		}
 		
-		System.out.println("Done");
-		IJ.showStatus("Done!");
 		return m_conScene;
 	}
 }

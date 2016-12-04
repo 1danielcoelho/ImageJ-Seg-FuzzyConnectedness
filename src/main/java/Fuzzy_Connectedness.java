@@ -179,7 +179,7 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
 		c.gridwidth = 1;
 		panel.add(outputBinaryLabel, c);		
 		
-		JCheckBox outputBinaryCheckbox = new JCheckBox();
+		final JCheckBox outputBinaryCheckbox = new JCheckBox();
 		outputBinaryCheckbox.addActionListener(new ActionListener()
 		{
 			public void actionPerformed(ActionEvent e)
@@ -284,6 +284,22 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
 		bottomPanel.add(clearButton, c);	
 		
 		JButton resetButton = new JButton("Reset parameters");
+		resetButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				outputBinaryCheckbox.setSelected(false);
+				objThresholdSlider.setValue(50);
+				binaryThresholdSlider.setValue(50);
+				segmentOpacitySlider.setValue(50);
+				
+				_binarize = false;
+            	ImagePlus img = WindowManager.getCurrentImage();
+            	
+            	if(img != null)            		
+            		img.updateAndDraw();
+			}
+		});
 		bottomPanel.add(resetButton, c);			
 		
 		//Color the bottom panel differently do highlight it
@@ -481,7 +497,14 @@ public class Fuzzy_Connectedness extends PlugInFrame implements MouseListener, I
     		return;
     	}
     	
-    	seg.stack = FuzzyConnector.run(img, seg, _threshold);    	
+    	long startTime = System.nanoTime();
+    	seg.stack = FuzzyConnector.run(img, seg, _threshold);
+    	long endTime = System.nanoTime();    	
+    	long duration = (endTime - startTime) / 1000000;
+    	    	
+    	IJ.showStatus("Done in " + duration + " ms");
+    	System.out.println("Done in " + duration + " ms");
+    	
     	img.updateAndDraw();
     }
     
