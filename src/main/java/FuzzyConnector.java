@@ -244,10 +244,7 @@ public class FuzzyConnector
 				float aff_c_e = affinity(c, e);
 				
 				if(aff_c_e < m_threshold) 
-				{
-					m_dial.Visit(e);
-					continue;
-				}						
+					continue;	
 				
 				float f_min = Math.min(m_conScene[c], aff_c_e);
 				if(f_min > m_conScene[e])

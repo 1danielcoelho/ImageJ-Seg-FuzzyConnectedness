@@ -59,9 +59,13 @@ public class DialCache
 	 */
 	public int Pop()
 	{
+		//We're done, this should never happen
+		if(m_largestAffinity == -1)
+			return -1;
+		
 		ArrayList<Integer> list = m_arr.get(m_largestAffinity);
 		
-		//FIFO
+		//FIFO		
 		int result = list.remove(0); 
 		m_size--;				
 		
@@ -82,15 +86,6 @@ public class DialCache
 	}
 	
 	/**
-	 * Marks a spel as visited, so that we can't push it into the Dial Cache ever again
-	 * @param spelIndex
-	 */
-	public void Visit(int spelIndex)
-	{
-		m_pointerArray.put(spelIndex, 0);
-	}
-	
-	/**
 	 * Updates the position of spelIndex within the Dial cache
 	 * @param spelIndex Index of the spel to update
 	 * @param newAffinity new 16-bit unsigned affinity value
@@ -99,15 +94,13 @@ public class DialCache
 	{		
 		//Update entry in pointer array
 		int oldAffinity = m_pointerArray.put(spelIndex, newAffinity);		
-		
+				
 		//Update entry in Dial array
 		ArrayList<Integer> oldList = m_arr.get(oldAffinity);
-		oldList.remove((Object)spelIndex);			
-		
-		//If we left the largest affinity bucket and its now empty, we update m_largestAffinity to the
-		//newAffinity. We only ever update an affinity if its higher, so this is bound to be better than
-		//the previous m_largestAffinity
-		if(oldAffinity == m_largestAffinity && oldList.size() == 0)
+		oldList.remove((Object)spelIndex);		
+
+		//We only ever update upwards: No need to check if we need to move m_largestAffinity down
+		if(newAffinity > m_largestAffinity)
 			m_largestAffinity = newAffinity;
 		
 		ArrayList<Integer> newList = m_arr.get(newAffinity);		
@@ -119,18 +112,18 @@ public class DialCache
 	 * and updates m_largestIndex to it
 	 */
 	private void UpdateLargestIndex()
-	{		
+	{			
 		for(int i = m_largestAffinity; i >= 0; i--)
 		{
 			ArrayList<Integer> list = m_arr.get(i);
 			
 			if(list.size() != 0)
 			{		
-				m_largestAffinity = i;
+				m_largestAffinity = i;				
 				return;
 			}				
 		}		
 		
-		m_largestAffinity = 0;
+		m_largestAffinity = -1;		
 	}
 }
