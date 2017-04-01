@@ -1,5 +1,6 @@
 # ImageJ-Seg-FuzzyConnectedness
 ImageJ 1.x plugin based on [an example Maven project](https://github.com/imagej/example-legacy-plugin)
+
 Uses a simple GUI to allow performing the Fuzzy Connectedness segmentation algorithm on DICOM image series.
 
 ## Dependencies
