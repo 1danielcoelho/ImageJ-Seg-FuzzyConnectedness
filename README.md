@@ -22,10 +22,6 @@ The resulting image can be binarized by hitting the 'Binarize image' checkbox an
 See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 ## References
-UDUPA, J. K.; SAHA, P. K.; LOTUFO, R. A. Relative Fuzzy Connectedness and Object Definition: Theory,
-Algorithms, and Applications in Image Segmentation. IEEE Transactions On Pattern Analysis And Machine
-Intelligence, v. 24, n. 11, p. 1485-1500, 2002.
-NYÚL, L. G.; FALCÃO, A. X.; UDUPA, J. K. Fuzzy-connected 3D image segmentation at interactive speeds.
-Graphical Mo-dels, v. 64, p. 259-281, 2003
-WELFORD, B. P. Note on a method for calculating corrected sums of squares and products. Technometrics
-4(3):419–420, 1962
+* UDUPA, J. K.; SAHA, P. K.; LOTUFO, R. A. Relative Fuzzy Connectedness and Object Definition: Theory, Algorithms, and Applications in Image Segmentation. IEEE Transactions On Pattern Analysis And Machine Intelligence, v. 24, n. 11, p. 1485-1500, 2002.
+* NYÚL, L. G.; FALCÃO, A. X.; UDUPA, J. K. Fuzzy-connected 3D image segmentation at interactive speeds. Graphical Models, v. 64, p. 259-281, 2003
+* WELFORD, B. P. Note on a method for calculating corrected sums of squares and products. Technometrics 4(3):419–420, 1962
