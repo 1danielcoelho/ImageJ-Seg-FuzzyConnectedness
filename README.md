@@ -6,17 +6,17 @@ Uses a simple GUI to allow performing the Fuzzy Connectedness segmentation algor
 ImageJ version 1.50i (Java 1.8.0_77 64-bit)
 
 ## Installation
-Drag [the jar file](/jar/Fuzzy_connectedness.jar) to the /plugins folder in the ImageJ installation directory
-Alternatively import the project into an IDE and export the .jar file yourself
+* Drag [the jar file](/jar/Fuzzy_connectedness.jar) to the /plugins folder in the ImageJ installation directory
+* Alternatively import the project into an IDE and export the .jar file yourself
 
 ## Instructions
-Open ImageJ
-Open a DICOM image series by clicking File->Open... or File->Import->Image Sequence... and following the dialog
-Open the Plugin GUI by clicking Plugin->Fuzzy Connectedness
-Hit the 'Select seeds' toggle and click on the target seed points (these can be on any slice of the stack)
-Adjust the object threshold to only incorporate pixels/voxels with at least that value of connectedness (range [0,1])
-Hit 'Run' to perform the segmentation algorithm
-The resulting image can be binarized by hitting the 'Binarize image' checkbox and adjusting the binarization threshold
+* Open ImageJ
+* Open a DICOM image series by clicking File->Open... or File->Import->Image Sequence... and following the dialog
+* Open the Plugin GUI by clicking Plugin->Fuzzy Connectedness
+* Hit the 'Select seeds' toggle and click on the target seed points (these can be on any slice of the stack)
+* Adjust the object threshold to only incorporate pixels/voxels with at least that value of connectedness (range [0,1])
+* Hit 'Run' to perform the segmentation algorithm
+* The resulting image can be binarized by hitting the 'Binarize image' checkbox and adjusting the binarization threshold
 
 ## License
 See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
